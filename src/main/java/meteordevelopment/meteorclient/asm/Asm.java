@@ -8,7 +8,6 @@ package meteordevelopment.meteorclient.asm;
 import io.gitlab.jfronny.libjf.unsafe.asm.AsmConfig;
 import io.gitlab.jfronny.libjf.unsafe.asm.patch.Patch;
 import meteordevelopment.meteorclient.MeteorClient;
-import meteordevelopment.meteorclient.asm.transformers.CanvasWorldRendererTransformer;
 import meteordevelopment.meteorclient.asm.transformers.GameRendererTransformer;
 import meteordevelopment.meteorclient.asm.transformers.PacketInflaterTransformer;
 import net.fabricmc.loader.api.FabricLoader;
@@ -29,7 +28,9 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-/** When mixins are just not good enough **/
+/**
+ * When mixins are just not good enough
+ **/
 public class Asm implements AsmConfig {
     public static Asm INSTANCE;
     private final Set<Patch> transformers = new HashSet<>();
@@ -38,7 +39,6 @@ public class Asm implements AsmConfig {
         INSTANCE = this;
 
         add(new GameRendererTransformer());
-        add(new CanvasWorldRendererTransformer());
         add(new PacketInflaterTransformer());
     }
 
