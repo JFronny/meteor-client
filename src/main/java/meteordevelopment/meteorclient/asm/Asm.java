@@ -44,12 +44,12 @@ public class Asm implements AsmConfig {
 
     private void add(AsmTransformer transformer) {
         String n = transformer.targetName.replace('.', '/');
-        transformers.add(new Patch() {
-            @Override
-            public void apply(ClassNode klazz) {
-                if (klazz.name.equals(n))
-                    transformer.transform(klazz);
+        transformers.add(klazz -> {
+            if (klazz.name.equals(n)) {
+                transformer.transform(klazz);
+                return true;
             }
+            return false;
         });
     }
 
