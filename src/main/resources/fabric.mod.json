@@ -35,13 +35,13 @@
   },
   "depends": {
     "java": ">=21",
-    "minecraft": ["1.21.2", "${minecraft_version}"],
+    "minecraft": ["${minecraft_version}"],
     "fabricloader": ">=${loader_version}"
   },
   "breaks": {
     "optifabric": "*",
     "feather": "*",
-    "sodium": "<0.6.0",
+    "sodium": "<0.6.5",
     "morechathistory": "*",
     "quilt_loader": "*"
   }

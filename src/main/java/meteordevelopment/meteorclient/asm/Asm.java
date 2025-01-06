@@ -8,7 +8,6 @@ package meteordevelopment.meteorclient.asm;
 import io.gitlab.jfronny.libjf.unsafe.asm.AsmConfig;
 import io.gitlab.jfronny.libjf.unsafe.asm.patch.Patch;
 import meteordevelopment.meteorclient.MeteorClient;
-import meteordevelopment.meteorclient.asm.transformers.GameRendererTransformer;
 import meteordevelopment.meteorclient.asm.transformers.PacketInflaterTransformer;
 import net.fabricmc.loader.api.FabricLoader;
 import org.objectweb.asm.ClassReader;
@@ -38,7 +37,6 @@ public class Asm implements AsmConfig {
     public Asm() {
         INSTANCE = this;
 
-        add(new GameRendererTransformer());
         add(new PacketInflaterTransformer());
     }
 
