@@ -46,8 +46,8 @@ public class MeteorClient implements ClientModInitializer {
     public static final String MOD_ID = "meteor-client";
     public static final ModMetadata MOD_META;
     public static final String NAME;
-    public static final  Version VERSION;
-    public static final  String DEV_BUILD = "";
+    public static final Version VERSION;
+    public static final String BUILD_NUMBER = "";
 
     public static MeteorClient INSTANCE;
     public static MeteorAddon ADDON;
@@ -63,8 +63,8 @@ public class MeteorClient implements ClientModInitializer {
         NAME = MOD_META.getName();
         LOG = LoggerFactory.getLogger(NAME);
 
-        String versionString = MOD_META.getVersion().getFriendlyString();
-        if (versionString.contains("-")) versionString = versionString.split("-")[0];
+        String versionString = MOD_META.getVersion().getFriendlyString()
+            .split("[-+]")[0];
 
         // When building and running through IntelliJ and not Gradle it doesn't replace the version so just use a dummy
         if (versionString.equals("${version}")) versionString = "0.0.0";
