@@ -19,7 +19,8 @@
   "environment": "client",
   "entrypoints": {
     "client": ["meteordevelopment.meteorclient.MeteorClient"],
-    "libjf:asm": ["meteordevelopment.meteorclient.asm.Asm"]
+    "libjf:asm": ["meteordevelopment.meteorclient.asm.Asm"],
+    "modmenu": ["meteordevelopment.meteorclient.ModMenuIntegration"]
   },
   "mixins": [
     "meteor-client.mixins.json",
@@ -41,7 +42,7 @@
   "breaks": {
     "optifabric": "*",
     "feather": "*",
-    "sodium": "<0.6.5",
+    "sodium": "<0.6.12",
     "morechathistory": "*",
     "quilt_loader": "*"
   }

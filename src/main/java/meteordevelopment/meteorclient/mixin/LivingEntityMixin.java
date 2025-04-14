@@ -8,29 +8,25 @@ package meteordevelopment.meteorclient.mixin;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import meteordevelopment.meteorclient.MeteorClient;
-import meteordevelopment.meteorclient.events.entity.DamageEvent;
 import meteordevelopment.meteorclient.events.entity.player.CanWalkOnFluidEvent;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.systems.modules.movement.Sprint;
 import meteordevelopment.meteorclient.systems.modules.movement.elytrafly.ElytraFlightModes;
 import meteordevelopment.meteorclient.systems.modules.movement.elytrafly.ElytraFly;
 import meteordevelopment.meteorclient.systems.modules.movement.elytrafly.modes.Bounce;
+import meteordevelopment.meteorclient.systems.modules.player.NoStatusEffects;
 import meteordevelopment.meteorclient.systems.modules.player.OffhandCrash;
-import meteordevelopment.meteorclient.systems.modules.player.PotionSpoof;
 import meteordevelopment.meteorclient.systems.modules.render.HandView;
 import meteordevelopment.meteorclient.systems.modules.render.NoRender;
-import meteordevelopment.meteorclient.utils.Utils;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.effect.StatusEffect;
 import net.minecraft.fluid.FluidState;
 import net.minecraft.item.ItemStack;
 import net.minecraft.registry.entry.RegistryEntry;
-import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Hand;
 import net.minecraft.world.World;
 import org.spongepowered.asm.mixin.Mixin;
@@ -45,12 +41,6 @@ import static meteordevelopment.meteorclient.MeteorClient.mc;
 public abstract class LivingEntityMixin extends Entity {
     public LivingEntityMixin(EntityType<?> type, World world) {
         super(type, world);
-    }
-
-    @Inject(method = "damage", at = @At("HEAD"))
-    private void onDamageHead(ServerWorld world, DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
-        if (Utils.canUpdate() && getWorld().isClient)
-            MeteorClient.EVENT_BUS.post(DamageEvent.get((LivingEntity) (Object) this, source));
     }
 
     @ModifyReturnValue(method = "canWalkOnFluid", at = @At("RETURN"))
@@ -121,7 +111,7 @@ public abstract class LivingEntityMixin extends Entity {
 
     @ModifyReturnValue(method = "hasStatusEffect", at = @At("RETURN"))
     private boolean hasStatusEffect(boolean original, RegistryEntry<StatusEffect> effect) {
-        if (Modules.get().get(PotionSpoof.class).shouldBlock(effect.value())) return false;
+        if (Modules.get().get(NoStatusEffects.class).shouldBlock(effect.value())) return false;
 
         return original;
     }
@@ -131,8 +121,8 @@ public abstract class LivingEntityMixin extends Entity {
         if ((Object) this != mc.player) return original;
         if (!Modules.get().get(Sprint.class).rageSprint()) return original;
 
-        float forward = Math.signum(mc.player.input.movementForward);
-        float strafe = 90 * Math.signum(mc.player.input.movementSideways);
+        float forward = Math.signum(mc.player.forwardSpeed);
+        float strafe = 90 * Math.signum(mc.player.sidewaysSpeed);
         if (forward != 0) strafe *= (forward * 0.5f);
 
         original -= strafe;
@@ -147,6 +137,6 @@ public abstract class LivingEntityMixin extends Entity {
         if (!Modules.get().get(Sprint.class).rageSprint()) return original;
 
         // only add the extra velocity if you're actually moving, otherwise you'll jump in place and move forward
-        return original && (Math.abs(mc.player.input.movementForward) > 1.0E-5F || Math.abs(mc.player.input.movementSideways) > 1.0E-5F);
+        return original && (Math.abs(mc.player.forwardSpeed) > 1.0E-5F || Math.abs(mc.player.sidewaysSpeed) > 1.0E-5F);
     }
 }

@@ -1,7 +1,7 @@
 plugins {
-    id("fabric-loom") version "1.9-SNAPSHOT"
+    id("fabric-loom") version "1.10-SNAPSHOT"
     id("maven-publish")
-    id("com.gradleup.shadow") version "9.0.0-beta4"
+    id("com.gradleup.shadow") version "9.0.0-beta11"
 }
 
 base {
@@ -23,8 +23,8 @@ repositories {
         url = uri("https://maven.frohnmeyer-wds.de/artifacts")
     }
     maven {
-        name = "vram"
-        url = uri("https://maven.vram.io/")
+        name = "Terraformers"
+        url = uri("https://maven.terraformersmc.com")
     }
     maven {
         name = "ViaVersion"
@@ -72,21 +72,23 @@ dependencies {
 
     // Compat fixes
     modCompileOnly(fabricApi.module("fabric-renderer-indigo", properties["fapi_version"] as String))
-    modCompileOnly("maven.modrinth:sodium:${properties["sodium_version"] as String}") { isTransitive  = false }
-    modCompileOnly("maven.modrinth:lithium:${properties["lithium_version"] as String}") { isTransitive  = false }
-    modCompileOnly("maven.modrinth:iris:${properties["iris_version"] as String}") { isTransitive  = false }
-    modCompileOnly("com.viaversion:viafabricplus:${properties["viafabricplus_version"] as String}") { isTransitive  = false }
-    modCompileOnly("com.viaversion:viafabricplus-api:${properties["viafabricplus_version"] as String}") { isTransitive  = false }
+    modCompileOnly("maven.modrinth:sodium:${properties["sodium_version"] as String}") { isTransitive = false }
+    modCompileOnly("maven.modrinth:lithium:${properties["lithium_version"] as String}") { isTransitive = false }
+    modCompileOnly("maven.modrinth:iris:${properties["iris_version"] as String}") { isTransitive = false }
+    modCompileOnly("com.viaversion:viafabricplus:${properties["viafabricplus_version"] as String}") { isTransitive = false }
+    modCompileOnly("com.viaversion:viafabricplus-api:${properties["viafabricplus_version"] as String}") { isTransitive = false }
 
     // Baritone (https://github.com/MeteorDevelopment/baritone)
     modCompileOnly("meteordevelopment:baritone:${properties["baritone_version"] as String}-SNAPSHOT")
+    // ModMenu (https://github.com/TerraformersMC/ModMenu)
+    modCompileOnly("com.terraformersmc:modmenu:${properties["modmenu_version"] as String}")
 
     // Libraries
     modInclude("meteordevelopment:orbit:${properties["orbit_version"] as String}")
     modInclude("meteordevelopment:starscript:${properties["starscript_version"] as String}")
     modInclude("org.reflections:reflections:${properties["reflections_version"] as String}")
-    modInclude("io.netty:netty-handler-proxy:${properties["netty_version"] as String}") { isTransitive  = false }
-    modInclude("io.netty:netty-codec-socks:${properties["netty_version"] as String}") { isTransitive  = false }
+    modInclude("io.netty:netty-handler-proxy:${properties["netty_version"] as String}") { isTransitive = false }
+    modInclude("io.netty:netty-codec-socks:${properties["netty_version"] as String}") { isTransitive = false }
     modInclude("de.florianmichael:WaybackAuthLib:${properties["waybackauthlib_version"] as String}")
 
     modInclude("io.gitlab.jfronny.libjf:libjf-unsafe-v0:${properties["libjf_version"] as String}")
@@ -109,7 +111,7 @@ tasks {
         val propertyMap = mapOf(
             "version"           to project.version,
             "minecraft_version" to project.property("minecraft_version"),
-            "loader_version"    to project.property("loader_version")
+            "loader_version" to project.property("loader_version")
         )
 
         inputs.properties(propertyMap)
@@ -135,6 +137,8 @@ tasks {
 
     withType<JavaCompile> {
         options.release = 21
+        options.compilerArgs.add("-Xlint:deprecation")
+        options.compilerArgs.add("-Xlint:unchecked")
     }
 
     shadowJar {
@@ -160,7 +164,7 @@ tasks {
     }
 
     javadoc {
-        with (options as StandardJavadocDocletOptions) {
+        with(options as StandardJavadocDocletOptions) {
             addStringOption("Xdoclint:none", "-quiet")
             addStringOption("encoding", "UTF-8")
             addStringOption("charSet", "UTF-8")

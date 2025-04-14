@@ -7,39 +7,44 @@ package meteordevelopment.meteorclient.mixin;
 
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
+import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
 import com.llamalad7.mixinextras.sugar.Local;
 import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.events.entity.player.ItemUseCrosshairTargetEvent;
 import meteordevelopment.meteorclient.events.game.GameLeftEvent;
 import meteordevelopment.meteorclient.events.game.OpenScreenEvent;
-import meteordevelopment.meteorclient.events.game.ResourcePacksReloadedEvent;
 import meteordevelopment.meteorclient.events.game.ResolutionChangedEvent;
+import meteordevelopment.meteorclient.events.game.ResourcePacksReloadedEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
 import meteordevelopment.meteorclient.gui.WidgetScreen;
 import meteordevelopment.meteorclient.mixininterface.IMinecraftClient;
+import meteordevelopment.meteorclient.renderer.MeteorRenderPipelines;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.systems.modules.player.FastUse;
 import meteordevelopment.meteorclient.systems.modules.player.Multitask;
+import meteordevelopment.meteorclient.systems.modules.render.ESP;
+import meteordevelopment.meteorclient.systems.modules.world.HighwayBuilder;
 import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.misc.CPSUtils;
 import meteordevelopment.meteorclient.utils.misc.MeteorStarscript;
 import meteordevelopment.starscript.Script;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.Mouse;
+import net.minecraft.client.gl.Framebuffer;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.network.ClientPlayerInteractionManager;
 import net.minecraft.client.option.GameOptions;
 import net.minecraft.client.util.Window;
 import net.minecraft.client.world.ClientWorld;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
+import net.minecraft.resource.ReloadableResourceManagerImpl;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.profiler.Profilers;
 import org.jetbrains.annotations.Nullable;
-import org.spongepowered.asm.mixin.Final;
-import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.*;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
@@ -74,10 +79,24 @@ public abstract class MinecraftClientMixin implements IMinecraftClient {
     @Nullable
     public ClientPlayerEntity player;
 
+    @Shadow
+    @Final
+    private ReloadableResourceManagerImpl resourceManager;
+
+    @Shadow
+    @Final
+    @Mutable
+    private Framebuffer framebuffer;
+
     @Inject(method = "<init>", at = @At("TAIL"))
     private void onInit(CallbackInfo info) {
         MeteorClient.INSTANCE.onInitializeClient();
         firstFrame = true;
+    }
+
+    @Inject(method = "<init>", at = @At(value = "INVOKE", target = "Lnet/minecraft/resource/ReloadableResourceManagerImpl;reload(Ljava/util/concurrent/Executor;Ljava/util/concurrent/Executor;Ljava/util/concurrent/CompletableFuture;Ljava/util/List;)Lnet/minecraft/resource/ResourceReload;", shift = At.Shift.BEFORE))
+    private void init$beforeReload(CallbackInfo info) {
+        resourceManager.registerReloader(new MeteorRenderPipelines.Reloader());
     }
 
     @Inject(at = @At("HEAD"), method = "tick")
@@ -144,6 +163,18 @@ public abstract class MinecraftClientMixin implements IMinecraftClient {
         return original.thenRun(() -> MeteorClient.EVENT_BUS.post(ResourcePacksReloadedEvent.get()));
     }
 
+    // Have to add this condition if we want to draw back a bow using packets, without it getting cancelled by vanilla code
+    @WrapWithCondition(method = "handleInputEvents", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/network/ClientPlayerInteractionManager;stopUsingItem(Lnet/minecraft/entity/player/PlayerEntity;)V"))
+    private boolean wrapStopUsing(ClientPlayerInteractionManager instance, PlayerEntity player) {
+        return HB$stopUsingItem();
+    }
+
+    @Unique
+    private boolean HB$stopUsingItem() {
+        HighwayBuilder b = Modules.get().get(HighwayBuilder.class);
+        return !b.isActive() || !b.drawingBow;
+    }
+
     @Inject(method = "onResolutionChanged", at = @At("TAIL"))
     private void onResolutionChanged(CallbackInfo info) {
         MeteorClient.EVENT_BUS.post(ResolutionChangedEvent.get());
@@ -164,7 +195,7 @@ public abstract class MinecraftClientMixin implements IMinecraftClient {
         lastTime = time;
     }
 
-    // multitask
+    // Multitask
 
     @ModifyExpressionValue(method = "doItemUse", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/network/ClientPlayerInteractionManager;isBreakingBlock()Z"))
     private boolean doItemUseModifyIsBreakingBlock(boolean original) {
@@ -184,9 +215,20 @@ public abstract class MinecraftClientMixin implements IMinecraftClient {
     @Inject(method = "handleInputEvents", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/network/ClientPlayerEntity;isUsingItem()Z", ordinal = 0, shift = At.Shift.BEFORE))
     private void handleInputEventsInjectStopUsingItem(CallbackInfo info) {
         if (Modules.get().get(Multitask.class).attackingEntities() && player.isUsingItem()) {
-            if (!options.useKey.isPressed()) interactionManager.stopUsingItem(player);
+            if (!options.useKey.isPressed() && HB$stopUsingItem()) interactionManager.stopUsingItem(player);
             while (options.useKey.wasPressed());
         }
+    }
+
+    // Glow esp
+
+    @ModifyReturnValue(method = "hasOutline", at = @At("RETURN"))
+    private boolean hasOutlineModifyIsOutline(boolean original, Entity entity) {
+        ESP esp = Modules.get().get(ESP.class);
+        if (esp == null) return original;
+        if (!esp.isGlow() || esp.shouldSkip(entity)) return original;
+
+        return esp.getColor(entity) != null || original;
     }
 
     // Interface
@@ -194,5 +236,10 @@ public abstract class MinecraftClientMixin implements IMinecraftClient {
     @Override
     public void meteor$rightClick() {
         rightClick = true;
+    }
+
+    @Override
+    public void meteor$setFramebuffer(Framebuffer framebuffer) {
+        this.framebuffer = framebuffer;
     }
 }

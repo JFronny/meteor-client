@@ -61,8 +61,8 @@ public class CommandsCommand extends Command {
             text.append(Text.literal(", ").formatted(Formatting.GRAY));
         text.setStyle(text
             .getStyle()
-            .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, tooltip))
-            .withClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/m " + command.getName()))
+            .withHoverEvent(new HoverEvent.ShowText(tooltip))
+            .withClickEvent(new ClickEvent.SuggestCommand("/m " + command.getName()))
         );
 
         return text;

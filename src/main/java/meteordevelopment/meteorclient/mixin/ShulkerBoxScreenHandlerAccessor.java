@@ -5,15 +5,13 @@
 
 package meteordevelopment.meteorclient.mixin;
 
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
+import net.minecraft.inventory.Inventory;
+import net.minecraft.screen.ShulkerBoxScreenHandler;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Mutable;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
-@Mixin(value = ItemStack.class, priority = 999)
-public interface ItemStackAccessor {
-    @Mutable
-    @Accessor("item")
-    void setItem(Item item);
+@Mixin(ShulkerBoxScreenHandler.class)
+public interface ShulkerBoxScreenHandlerAccessor {
+    @Accessor("inventory")
+    Inventory meteor$getInventory();
 }

@@ -39,7 +39,7 @@ public class AutoEat extends Module {
 
     // General
 
-    private final Setting<List<Item>> blacklist = sgGeneral.add(new ItemListSetting.Builder()
+    public final Setting<List<Item>> blacklist = sgGeneral.add(new ItemListSetting.Builder()
         .name("blacklist")
         .description("Which items to not eat.")
         .defaultValue(
@@ -164,7 +164,7 @@ public class AutoEat extends Module {
     }
 
     private void startEating() {
-        prevSlot = mc.player.getInventory().selectedSlot;
+        prevSlot = mc.player.getInventory().getSelectedSlot();
         eat();
 
         // Pause auras
