@@ -275,8 +275,11 @@ public abstract class GuiTheme implements ISerializable<GuiTheme> {
     public double textWidth(String text, int length, boolean title) {
         return scale(textRenderer().getWidth(text, length, false) * (title ? TITLE_TEXT_SCALE : 1));
     }
+    public double textWidth(String text, boolean title) {
+        return scale(textRenderer().getWidth(text, false) * (title ? TITLE_TEXT_SCALE : 1));
+    }
     public double textWidth(String text) {
-        return textWidth(text, text.length(), false);
+        return textWidth(text, false);
     }
 
     public double textHeight(boolean title) {

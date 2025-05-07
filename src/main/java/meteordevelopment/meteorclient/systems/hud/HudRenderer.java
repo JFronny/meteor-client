@@ -170,7 +170,7 @@ public class HudRenderer {
         if (text.isEmpty()) return 0;
 
         if (hud.hasCustomFont()) {
-            double width = getFont(scale).getWidth(text, text.length());
+            double width = getFont(scale).getWidth(text);
             return (width + (shadow ? 1 : 0)) * (scale == -1 ? hud.getTextScale() : scale) + (shadow ? 1 : 0);
         }
 

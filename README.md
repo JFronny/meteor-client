@@ -14,6 +14,7 @@ You can get a build from [GitHub Actions](https://github.com/JFronny/meteor-clie
 - Add optional UI rounding + relevant API additions ([#619](https://github.com/MeteorDevelopment/meteor-client/pull/619))
 - Remove credit/spash/title/prefix customization
 - Add default target entities to KillAura and BowAimbot
+- Overhauled font loading to support special characters
 
 ## Credits
 [Cabaletta](https://github.com/cabaletta) and [WagYourTail](https://github.com/wagyourtail) for [Baritone](https://github.com/cabaletta/baritone)  

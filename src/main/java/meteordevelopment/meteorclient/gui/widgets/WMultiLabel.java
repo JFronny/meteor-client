@@ -27,7 +27,7 @@ public abstract class WMultiLabel extends WLabel {
         String[] textLines = text.split("\n");
         StringBuilder sb = new StringBuilder();
 
-        double spaceWidth = theme.textWidth(" ", 1, title);
+        double spaceWidth = theme.textWidth(" ", title);
         double maxWidth = theme.scale(this.maxWidth);
 
         double lineWidth = 0;
@@ -37,7 +37,7 @@ public abstract class WMultiLabel extends WLabel {
 
         for (String line : textLines) {
             for (String word : line.split(" ")) {
-                double wordWidth = theme.textWidth(word, word.length(), title);
+                double wordWidth = theme.textWidth(word, title);
 
                 double toAdd = wordWidth;
                 if (iInLine > 0) toAdd += spaceWidth;

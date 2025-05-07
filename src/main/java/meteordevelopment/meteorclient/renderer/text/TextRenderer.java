@@ -24,7 +24,7 @@ public interface TextRenderer {
 
     double getWidth(String text, int length, boolean shadow);
     default double getWidth(String text, boolean shadow) { return getWidth(text, text.length(), shadow); }
-    default double getWidth(String text) { return getWidth(text, text.length(), false); }
+    default double getWidth(String text) { return getWidth(text, false); }
 
     double getHeight(boolean shadow);
     default double getHeight() { return getHeight(false); }

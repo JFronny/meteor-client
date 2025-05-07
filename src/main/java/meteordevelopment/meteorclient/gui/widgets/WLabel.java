@@ -21,7 +21,7 @@ public abstract class WLabel extends WPressable {
 
     @Override
     protected void onCalculateSize() {
-        width = theme.textWidth(text, text.length(), title);
+        width = theme.textWidth(text, title);
         height = theme.textHeight(title);
     }
 
@@ -38,7 +38,7 @@ public abstract class WLabel extends WPressable {
     }
 
     public void set(String text) {
-        if (Math.round(theme.textWidth(text, text.length(), title)) != width) invalidate();
+        if (Math.round(theme.textWidth(text, title)) != width) invalidate();
 
         this.text = text;
     }

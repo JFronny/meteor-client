@@ -90,6 +90,7 @@ public class Commands {
 
     public static void add(Command command) {
         COMMANDS.removeIf(existing -> existing.getName().equals(command.getName()));
+        //noinspection unchecked
         command.registerTo((CommandDispatcher<CommandSource>) (Object) DISPATCHER);
         COMMANDS.add(command);
     }
