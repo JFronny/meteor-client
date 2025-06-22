@@ -25,7 +25,6 @@ import meteordevelopment.meteorclient.utils.entity.TargetUtils;
 import meteordevelopment.meteorclient.utils.player.PlayerUtils;
 import meteordevelopment.meteorclient.utils.render.color.Color;
 import meteordevelopment.meteorclient.utils.render.color.SettingColor;
-import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.component.type.ItemEnchantmentsComponent;
 import net.minecraft.enchantment.Enchantment;
 import net.minecraft.enchantment.EnchantmentHelper;
@@ -258,17 +257,14 @@ public class CombatHud extends HudElement {
             Renderer2D.COLOR.render();
 
             // Player Model
-            InventoryScreen.drawEntity(
-                renderer.drawContext,
-                (int) x,
-                (int) y,
-                (int) (x + (25 * getScale())),
-                (int) (y + (66 * getScale())),
-                (int) (30 * getScale()),
-                0,
+            renderer.entity(
+                playerEntity,
+                (int) (x + 5 * getScale()),
+                (int) (y + 10 * getScale()),
+                (int) (50 * getScale()),
+                (int) (60 * getScale()),
                 -MathHelper.wrapDegrees(playerEntity.lastYaw + (playerEntity.getYaw() - playerEntity.lastYaw) * mc.getRenderTickCounter().getTickProgress(true)),
-                -playerEntity.getPitch(),
-                playerEntity
+                -playerEntity.getPitch()
             );
 
             // Moving pos to past player model
@@ -380,20 +376,17 @@ public class CombatHud extends HudElement {
             matrices.pushMatrix();
             matrices.scale((float) getScale(), (float) getScale(), 1);
 
-            x /= getScale();
-            y /= getScale();
-
             TextRenderer.get().begin(0.35, false, true);
 
             for (int position = 0; position < 6; position++) {
-                armorX = x + position * 20;
+                armorX = x + (position * 20 * getScale());
                 armorY = y;
 
                 ItemStack itemStack = getItem(slot);
 
-                renderer.item(itemStack, (int) (armorX), (int) (armorY), 1, true);
+                renderer.item(itemStack, (int) (armorX), (int) (armorY), (float) getScale(), true);
 
-                armorY += 18;
+                armorY = (y / getScale()) + 18;
 
                 ItemEnchantmentsComponent enchantments = EnchantmentHelper.getEnchantments(itemStack);
                 List<ObjectIntPair<RegistryEntry<Enchantment>>> enchantmentsToShow = new ArrayList<>();
@@ -407,7 +400,7 @@ public class CombatHud extends HudElement {
                 for (ObjectIntPair<RegistryEntry<Enchantment>> entry : enchantmentsToShow) {
                     String enchantName = Utils.getEnchantSimpleName(entry.left(), 3) + " " + entry.rightInt();
 
-                    double enchX = (armorX + 8) - (TextRenderer.get().getWidth(enchantName) / 2);
+                    double enchX = (((x / getScale()) + position * 20) + 8) - (TextRenderer.get().getWidth(enchantName) / 2);
                     TextRenderer.get().render(enchantName, enchX, armorY, entry.left().isIn(EnchantmentTags.CURSE) ? RED : enchantmentTextColor.get());
                     armorY += TextRenderer.get().getHeight();
                 }
@@ -462,12 +455,12 @@ public class CombatHud extends HudElement {
     private ItemStack getItem(int i) {
         if (isInEditor()) {
             return switch (i) {
-                case 0 -> Items.END_CRYSTAL.getDefaultStack();
-                case 1 -> Items.NETHERITE_BOOTS.getDefaultStack();
-                case 2 -> Items.NETHERITE_LEGGINGS.getDefaultStack();
-                case 3 -> Items.NETHERITE_CHESTPLATE.getDefaultStack();
-                case 4 -> Items.NETHERITE_HELMET.getDefaultStack();
-                case 5 -> Items.TOTEM_OF_UNDYING.getDefaultStack();
+                case 0 -> Items.NETHERITE_BOOTS.getDefaultStack();
+                case 1 -> Items.NETHERITE_LEGGINGS.getDefaultStack();
+                case 2 -> Items.NETHERITE_CHESTPLATE.getDefaultStack();
+                case 3 -> Items.NETHERITE_HELMET.getDefaultStack();
+                case 4 -> Items.TOTEM_OF_UNDYING.getDefaultStack();
+                case 5 -> Items.END_CRYSTAL.getDefaultStack();
                 default -> ItemStack.EMPTY;
             };
         }
@@ -479,8 +472,8 @@ public class CombatHud extends HudElement {
             case 4 -> playerEntity.getOffHandStack();
             case 3 -> playerEntity.getEquippedStack(EquipmentSlot.HEAD);
             case 2 -> playerEntity.getEquippedStack(EquipmentSlot.CHEST);
-            case 1 -> playerEntity.getEquippedStack(EquipmentSlot.FEET);
-            case 0 -> playerEntity.getEquippedStack(EquipmentSlot.LEGS);
+            case 1 -> playerEntity.getEquippedStack(EquipmentSlot.LEGS);
+            case 0 -> playerEntity.getEquippedStack(EquipmentSlot.FEET);
             default -> ItemStack.EMPTY;
         };
     }

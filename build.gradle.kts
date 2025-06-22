@@ -85,7 +85,7 @@ dependencies {
 
     // Libraries
     modInclude("meteordevelopment:orbit:${properties["orbit_version"] as String}")
-    modInclude("meteordevelopment:starscript:${properties["starscript_version"] as String}")
+    modInclude("org.meteordev:starscript:${properties["starscript_version"] as String}")
     modInclude("org.reflections:reflections:${properties["reflections_version"] as String}")
     modInclude("io.netty:netty-handler-proxy:${properties["netty_version"] as String}") { isTransitive = false }
     modInclude("io.netty:netty-codec-socks:${properties["netty_version"] as String}") { isTransitive = false }
@@ -121,9 +121,10 @@ tasks {
     }
 
     jar {
-        val licenseSuffix = project.base.archivesName.get()
+        inputs.property("archivesName", project.base.archivesName.get())
+
         from("LICENSE") {
-            rename { "${it}_${licenseSuffix}" }
+            rename { "${it}_${inputs.properties["archivesName"]}" }
         }
     }
 
@@ -144,9 +145,10 @@ tasks {
     shadowJar {
         configurations = listOf(project.configurations.shadow.get())
 
-        val licenseSuffix = project.base.archivesName.get()
+        inputs.property("archivesName", project.base.archivesName.get())
+
         from("LICENSE") {
-            rename { "${it}_${licenseSuffix}" }
+            rename { "${it}_${inputs.properties["archivesName"]}" }
         }
 
         destinationDirectory.set(layout.buildDirectory.dir("devlibs"))

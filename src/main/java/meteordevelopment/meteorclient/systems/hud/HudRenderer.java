@@ -22,8 +22,12 @@ import meteordevelopment.meteorclient.utils.render.RenderUtils;
 import meteordevelopment.meteorclient.utils.render.color.Color;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.render.entity.state.LivingEntityRenderState;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.Identifier;
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
 import org.lwjgl.BufferUtils;
 
 import java.nio.ByteBuffer;
@@ -65,6 +69,8 @@ public class HudRenderer {
         this.drawContext = drawContext;
         this.delta = Utils.frameTime;
 
+        drawContext.createNewRootLayer();
+
         if (!hud.hasCustomFont()) {
             VanillaTextRenderer.INSTANCE.scaleIndividually = true;
             VanillaTextRenderer.INSTANCE.begin();
@@ -84,7 +90,7 @@ public class HudRenderer {
                         .attachments(mc.getFramebuffer())
                         .pipeline(MeteorRenderPipelines.UI_TEXT)
                         .mesh(fontHolder.getMesh())
-                        .setupCallback(pass -> pass.bindSampler("u_Texture", fontHolder.font.texture.getGlTexture()))
+                        .sampler("u_Texture", fontHolder.font.texture.getGlTextureView())
                         .end();
                 }
                 else {
@@ -103,7 +109,9 @@ public class HudRenderer {
         for (Runnable task : postTasks) task.run();
         postTasks.clear();
 
-        this.drawContext = null;
+        drawContext.createNewRootLayer();
+
+        drawContext = null;
     }
 
     public void line(double x1, double y1, double x2, double y2, Color color) {
@@ -129,7 +137,7 @@ public class HudRenderer {
     public void texture(Identifier id, double x, double y, double width, double height, Color color) {
         Renderer2D.TEXTURE.begin();
         Renderer2D.TEXTURE.texQuad(x, y, width, height, color);
-        Renderer2D.TEXTURE.render(mc.getTextureManager().getTexture(id).getGlTexture());
+        Renderer2D.TEXTURE.render(mc.getTextureManager().getTexture(id).getGlTextureView());
     }
 
     public double text(String text, double x, double y, Color color, boolean shadow, double scale) {
@@ -208,11 +216,48 @@ public class HudRenderer {
     }
 
     public void item(ItemStack itemStack, int x, int y, float scale, boolean overlay, String countOverlay) {
-        RenderUtils.drawItem(drawContext, itemStack, x, y, scale, overlay, countOverlay);
+        RenderUtils.drawItem(drawContext, itemStack, x, y, scale, overlay, countOverlay, true);
     }
 
     public void item(ItemStack itemStack, int x, int y, float scale, boolean overlay) {
         RenderUtils.drawItem(drawContext, itemStack, x, y, scale, overlay);
+    }
+
+    public void entity(LivingEntity entity,  int x, int y, int width, int height, float yaw, float pitch) {
+        float previousBodyYaw = entity.bodyYaw;
+        float previousYaw = entity.getYaw();
+        float previousPitch = entity.getPitch();
+        float lastLastHeadYaw = entity.lastHeadYaw;
+        float lastHeadYaw = entity.headYaw;
+
+        float tanYaw = (float) Math.atan((yaw) / 40.0f);
+        float tanPitch = (float) Math.atan((pitch) / 40.0f);
+        entity.bodyYaw = 180.0f + tanYaw * 20.0f;
+        entity.setYaw(180.0f + tanYaw * 40.0f);
+        entity.setPitch(-tanPitch * 20.0f);
+        entity.headYaw = entity.getYaw();
+        entity.lastHeadYaw = entity.getYaw();
+
+        var state = (LivingEntityRenderState) mc.getEntityRenderDispatcher().getRenderer(entity).getAndUpdateRenderState(entity, 1);
+        state.hitbox = null;
+
+        entity.bodyYaw = previousBodyYaw;
+        entity.setYaw(previousYaw);
+        entity.setPitch(previousPitch);
+        entity.lastHeadYaw = lastLastHeadYaw;
+        entity.headYaw = lastHeadYaw;
+
+        float s = 1.0f / mc.getWindow().getScaleFactor();
+        int x1 = (int) (x * s);
+        int y1 = (int) (y * s);
+        int x2 = (int) ((x + width) * s);
+        int y2 = (int) ((y + height) * s);
+
+        float scale = Math.max(width, height) * s / 2f;
+        Vector3f translation = new Vector3f(0, 1f, 0);
+        Quaternionf rotation = new Quaternionf().rotateZ((float) Math.PI);
+
+        drawContext.addEntity(state, scale, translation, rotation, null, x1, y1, x2, y2);
     }
 
     private FontHolder getFontHolder(double scale, boolean render) {

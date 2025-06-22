@@ -2,6 +2,7 @@
  * This file is part of the Meteor Client distribution (https://github.com/MeteorDevelopment/meteor-client).
  * Copyright (c) Meteor Development.
  */
+
 package meteordevelopment.meteorclient.renderer.text;
 
 import com.mojang.blaze3d.textures.FilterMode;
@@ -19,7 +20,7 @@ import java.nio.IntBuffer;
 import java.util.function.IntPredicate;
 
 public class Font {
-    public Texture texture;
+    public final Texture texture;
     private final int height;
     private final float scale;
     private final float ascent;
@@ -167,6 +168,9 @@ public class Font {
         loadCharacters(string);
 
         y += ascent * this.scale * scale;
+
+        int length = string.length();
+        mesh.ensureCapacity(length * 4, length * 6);
 
         for (CharData c : (Iterable<CharData>) string.chars().mapToObj(this::getCharData)::iterator) {
             mesh.quad(

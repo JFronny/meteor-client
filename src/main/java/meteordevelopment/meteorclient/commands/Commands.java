@@ -22,7 +22,7 @@ import static meteordevelopment.meteorclient.MeteorClient.mc;
 
 public class Commands {
     public static final CommandDispatcher<FabricClientCommandSource> DISPATCHER = new CommandDispatcher<>();
-    public static final FabricClientCommandSource COMMAND_SOURCE = (FabricClientCommandSource) new ClientCommandSource(null, mc);
+    public static final FabricClientCommandSource COMMAND_SOURCE = (FabricClientCommandSource) new ClientCommandSource(null, mc, true);
     public static final List<Command> COMMANDS = new ArrayList<>();
 
     @PostInit(dependencies = PathManagers.class)
@@ -90,7 +90,6 @@ public class Commands {
 
     public static void add(Command command) {
         COMMANDS.removeIf(existing -> existing.getName().equals(command.getName()));
-        //noinspection unchecked
         command.registerTo((CommandDispatcher<CommandSource>) (Object) DISPATCHER);
         COMMANDS.add(command);
     }

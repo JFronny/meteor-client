@@ -14,6 +14,7 @@ import meteordevelopment.meteorclient.events.render.GetFovEvent;
 import meteordevelopment.meteorclient.events.render.Render3DEvent;
 import meteordevelopment.meteorclient.events.render.RenderAfterWorldEvent;
 import meteordevelopment.meteorclient.mixininterface.IVec3d;
+import meteordevelopment.meteorclient.renderer.MeteorRenderPipelines;
 import meteordevelopment.meteorclient.renderer.Renderer3D;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.systems.modules.player.LiquidInteract;
@@ -66,6 +67,9 @@ public abstract class GameRendererMixin {
     private Renderer3D renderer;
 
     @Unique
+    private Renderer3D depthRenderer;
+
+    @Unique
     private final MatrixStack matrices = new MatrixStack();
 
     @Shadow
@@ -83,8 +87,9 @@ public abstract class GameRendererMixin {
 
         // Create renderer and event
 
-        if (renderer == null) renderer = new Renderer3D();
-        Render3DEvent event = Render3DEvent.get(matrixStack, renderer, tickDelta, camera.getPos().x, camera.getPos().y, camera.getPos().z);
+        if (renderer == null) renderer = new Renderer3D(MeteorRenderPipelines.WORLD_COLORED_LINES, MeteorRenderPipelines.WORLD_COLORED);
+        if (depthRenderer == null) depthRenderer = new Renderer3D(MeteorRenderPipelines.WORLD_COLORED_LINES_DEPTH, MeteorRenderPipelines.WORLD_COLORED_DEPTH);
+        Render3DEvent event = Render3DEvent.get(matrixStack, renderer, depthRenderer, tickDelta, camera.getPos().x, camera.getPos().y, camera.getPos().z);
 
         // Call utility classes
 
@@ -104,8 +109,10 @@ public abstract class GameRendererMixin {
         // Render
 
         renderer.begin();
+        depthRenderer.begin();
         MeteorClient.EVENT_BUS.post(event);
         renderer.render(matrixStack);
+        depthRenderer.render(matrixStack);
 
         // Revert model view matrix
 
@@ -142,7 +149,7 @@ public abstract class GameRendererMixin {
         }
     }
 
-    @ModifyExpressionValue(method = "renderWorld", at = @At(value = "INVOKE", target = "Lnet/minecraft/util/math/MathHelper;lerp(FFF)F"))
+    @ModifyExpressionValue(method = "renderWorld", at = @At(value = "INVOKE", target = "Ljava/lang/Math;max(FF)F", ordinal = 0))
     private float applyCameraTransformationsMathHelperLerpProxy(float original) {
         return Modules.get().get(NoRender.class).noNausea() ? 0 : original;
     }
@@ -207,7 +214,7 @@ public abstract class GameRendererMixin {
     }
 
     @Inject(method = "renderHand", at = @At("HEAD"), cancellable = true)
-    private void renderHand(Camera camera, float tickDelta, Matrix4f matrix4f, CallbackInfo ci) {
+    private void renderHand(float tickProgress, boolean sleeping, Matrix4f positionMatrix, CallbackInfo ci) {
         if (!Modules.get().get(Freecam.class).renderHands() ||
             !Modules.get().get(Zoom.class).renderHands())
             ci.cancel();
