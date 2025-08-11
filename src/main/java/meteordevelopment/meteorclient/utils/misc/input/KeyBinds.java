@@ -11,15 +11,13 @@ import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import org.lwjgl.glfw.GLFW;
 
-import java.util.Map;
-
 public class KeyBinds {
     private static final String CATEGORY = "category.meteor-client.meteor";
 
     public static KeyBinding OPEN_GUI = KeyBindingHelper.registerKeyBinding(new KeyBinding("key.meteor-client.open-gui", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_SHIFT, CATEGORY));
 
     public static int getKey(KeyBinding bind) {
-        return ((KeyBindingAccessor) bind).getKey().getCode();
+        return ((KeyBindingAccessor) bind).meteor$getKey().getCode();
     }
 
     public static void ensureInitialized() {

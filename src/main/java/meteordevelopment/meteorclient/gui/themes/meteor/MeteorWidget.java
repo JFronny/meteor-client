@@ -15,13 +15,17 @@ public interface MeteorWidget extends BaseWidget {
         return (MeteorGuiTheme) getTheme();
     }
 
-    default void renderBackground(GuiRenderer renderer, WWidget widget, boolean pressed, boolean mouseOver) {
+    default void renderBackground(GuiRenderer renderer, WWidget widget, Color outlineColor, Color backgroundColor) {
         MeteorGuiTheme theme = theme();
         double s = theme.scale(2);
 
         int r = theme.roundAmount();
-        Color outlineColor = theme.outlineColor.get(pressed, mouseOver);
-        renderer.quadRounded(widget.x + s, widget.y + s, widget.width - s * 2, widget.height - s * 2, theme.backgroundColor.get(pressed, mouseOver), r - s);
+        renderer.quadRounded(widget.x + s, widget.y + s, widget.width - s * 2, widget.height - s * 2, backgroundColor, r - s);
         renderer.quadOutlineRounded(widget, outlineColor, r, s);
+    }
+
+    default void renderBackground(GuiRenderer renderer, WWidget widget, boolean pressed, boolean mouseOver) {
+        MeteorGuiTheme theme = theme();
+        renderBackground(renderer, widget, theme.outlineColor.get(pressed, mouseOver), theme.backgroundColor.get(pressed, mouseOver));
     }
 }

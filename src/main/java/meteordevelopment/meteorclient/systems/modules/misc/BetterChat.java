@@ -74,6 +74,15 @@ public class BetterChat extends Module {
         .build()
     );
 
+    private final Setting<Boolean> showSeconds = sgGeneral.add(new BoolSetting.Builder()
+        .name("show-seconds")
+        .description("Shows seconds in the chat message timestamps")
+        .defaultValue(false)
+        .visible(timestamps::get)
+        .onChanged(o -> updateDateFormat())
+        .build()
+    );
+
     private final Setting<Boolean> playerHeads = sgGeneral.add(new BoolSetting.Builder()
         .name("player-heads")
         .description("Displays player heads next to their messages.")
@@ -229,11 +238,10 @@ public class BetterChat extends Module {
 
     private static final Pattern antiSpamRegex = Pattern.compile(" \\(([0-9]{1,9})\\)$");
     private static final Pattern antiClearRegex = Pattern.compile("\\n(\\n|\\s)+\\n");
-    private static final Pattern timestampRegex = Pattern.compile("^(<[0-9]{2}:[0-9]{2}>\\s)");
+    private static final Pattern timestampRegex = Pattern.compile("^(<[0-9]{2}:[0-9]{2}(?::[0-9]{2})?> )");
     private static final Pattern usernameRegex = Pattern.compile("^(?:<[0-9]{2}:[0-9]{2}>\\s)?<(.*?)>.*");
 
     private final Char2CharMap SMALL_CAPS = new Char2CharOpenHashMap();
-    private final SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm");
     public final IntList lines = new IntArrayList();
 
     public BetterChat() {
@@ -327,7 +335,7 @@ public class BetterChat extends Module {
         Text returnText = null;
         int messageIndex = -1;
 
-        List<ChatHudLine> messages = ((ChatHudAccessor) mc.inGameHud.getChatHud()).getMessages();
+        List<ChatHudLine> messages = ((ChatHudAccessor) mc.inGameHud.getChatHud()).meteor$getMessages();
         if (messages.isEmpty()) return null;
 
         for (int i = 0; i < Math.min(antiSpamDepth.get(), messages.size()); i++) {
@@ -335,7 +343,7 @@ public class BetterChat extends Module {
 
             Matcher timestampMatcher = timestampRegex.matcher(stringToCheck);
             if (timestampMatcher.find()) {
-                stringToCheck = stringToCheck.substring(8);
+                stringToCheck = stringToCheck.substring(timestampMatcher.end());
             }
 
             if (textString.equals(stringToCheck)) {
@@ -358,7 +366,7 @@ public class BetterChat extends Module {
         }
 
         if (returnText != null) {
-            List<ChatHudLine.Visible> visible = ((ChatHudAccessor) mc.inGameHud.getChatHud()).getVisibleMessages();
+            List<ChatHudLine.Visible> visible = ((ChatHudAccessor) mc.inGameHud.getChatHud()).meteor$getVisibleMessages();
 
             int start = -1;
             for (int i = 0; i < messageIndex; i++) {
@@ -479,6 +487,14 @@ public class BetterChat extends Module {
         }
 
         return sender;
+    }
+
+    // Timestamps
+
+    private SimpleDateFormat dateFormat;
+
+    private void updateDateFormat() {
+        dateFormat = new SimpleDateFormat(showSeconds.get() ? "HH:mm:ss" : "HH:mm");
     }
 
     // Annoy
