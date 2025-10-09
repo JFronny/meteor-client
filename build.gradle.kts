@@ -1,4 +1,5 @@
 import com.github.jengelman.gradle.plugins.shadow.transformers.PreserveFirstFoundResourceTransformer
+import net.fabricmc.loom.task.prod.ClientProductionRunTask
 
 plugins {
     id("fabric-loom") version "1.10-SNAPSHOT"
@@ -89,6 +90,7 @@ dependencies {
     modInclude("meteordevelopment:orbit:${properties["orbit_version"] as String}")
     modInclude("org.meteordev:starscript:${properties["starscript_version"] as String}")
     modInclude("org.reflections:reflections:${properties["reflections_version"] as String}")
+    include("org.javassist:javassist:3.28.0-GA") // reflections dependency, included separately because modInclude doesn't handle this
     modInclude("io.netty:netty-handler-proxy:${properties["netty_version"] as String}") { isTransitive = false }
     modInclude("io.netty:netty-codec-socks:${properties["netty_version"] as String}") { isTransitive = false }
     modInclude("de.florianmichael:WaybackAuthLib:${properties["waybackauthlib_version"] as String}")
@@ -101,6 +103,8 @@ dependencies {
 loom {
     accessWidenerPath = file("src/main/resources/meteor-client.accesswidener")
 }
+
+val prodClient by tasks.registering(ClientProductionRunTask::class)
 
 afterEvaluate {
     tasks.migrateMappings.configure {
