@@ -1,7 +1,9 @@
+import com.github.jengelman.gradle.plugins.shadow.transformers.PreserveFirstFoundResourceTransformer
+
 plugins {
     id("fabric-loom") version "1.10-SNAPSHOT"
     id("maven-publish")
-    id("com.gradleup.shadow") version "9.0.0-beta11"
+    id("com.gradleup.shadow") version "9.2.2"
 }
 
 base {
@@ -157,6 +159,14 @@ tasks {
             exclude {
                 it.moduleGroup == "org.slf4j"
             }
+        }
+
+        duplicatesStrategy = DuplicatesStrategy.FAIL
+        filesMatching("fabric.mod.json") {
+            duplicatesStrategy = DuplicatesStrategy.WARN
+        }
+        transform<PreserveFirstFoundResourceTransformer> {
+            resources.add("fabric.mod.json")
         }
     }
 
