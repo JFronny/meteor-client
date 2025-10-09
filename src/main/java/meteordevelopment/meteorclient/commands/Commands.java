@@ -8,12 +8,14 @@ package meteordevelopment.meteorclient.commands;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.tree.CommandNode;
+import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.commands.commands.*;
 import meteordevelopment.meteorclient.pathing.PathManagers;
 import meteordevelopment.meteorclient.utils.PostInit;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.client.network.ClientCommandSource;
+import net.minecraft.command.CommandRegistryAccess;
 import net.minecraft.command.CommandSource;
 
 import java.util.*;
@@ -21,9 +23,9 @@ import java.util.*;
 import static meteordevelopment.meteorclient.MeteorClient.mc;
 
 public class Commands {
-    public static final CommandDispatcher<FabricClientCommandSource> DISPATCHER = new CommandDispatcher<>();
     public static final FabricClientCommandSource COMMAND_SOURCE = (FabricClientCommandSource) new ClientCommandSource(null, mc, true);
     public static final List<Command> COMMANDS = new ArrayList<>();
+    public static CommandDispatcher<FabricClientCommandSource> DISPATCHER = new CommandDispatcher<>();
 
     @PostInit(dependencies = PathManagers.class)
     public static void init() {
@@ -67,11 +69,9 @@ public class Commands {
 
         COMMANDS.sort(Comparator.comparing(Command::getName));
 
-        ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-            Map<CommandNode<FabricClientCommandSource>, CommandNode<FabricClientCommandSource>> originalToCopy = new HashMap<>();
-            originalToCopy.put(DISPATCHER.getRoot(), dispatcher.getRoot());
-            copyChildren(DISPATCHER.getRoot(), dispatcher.getRoot(), originalToCopy);
-        });
+        MeteorClient.EVENT_BUS.subscribe(Commands.class);
+
+        ClientCommandRegistrationCallback.EVENT.register(Commands::onJoin);
     }
 
     private static void copyChildren(CommandNode<FabricClientCommandSource> origin,
@@ -90,7 +90,6 @@ public class Commands {
 
     public static void add(Command command) {
         COMMANDS.removeIf(existing -> existing.getName().equals(command.getName()));
-        command.registerTo((CommandDispatcher<CommandSource>) (Object) DISPATCHER);
         COMMANDS.add(command);
     }
 
@@ -106,5 +105,30 @@ public class Commands {
         }
 
         return null;
+    }
+
+    /**
+     * Argument types that rely on Minecraft registries access those registries through a {@link CommandRegistryAccess}
+     * object. Since dynamic registries are specific to each server, we need to make a new CommandRegistryAccess object
+     * every time we join a server.
+     * <p>
+     * The command tree and by extension the {@link CommandDispatcher} also have to be rebuilt because:
+     * <ol>
+     * <li>Argument types that require registries use a registry wrapper object that is created and stored in the
+     *     argument type objects when the command tree is built.
+     * <li>Registry entries and keys are compared using referential equality. Even if the data encoded is the same,
+     *     registry wrapper objects' dynamic data becomes stale after joining another server.
+     * <li>The CommandDispatcher's node merging only adds missing children, it cannot replace stale argument type
+     *     objects.
+     * </ol>
+     *
+     * @author Crosby
+     */
+    private static void onJoin(CommandDispatcher<FabricClientCommandSource> dispatcher, CommandRegistryAccess registryAccess) {
+        DISPATCHER = dispatcher;
+        Command.REGISTRY_ACCESS = registryAccess;
+        for (Command command : COMMANDS) {
+            command.registerTo((CommandDispatcher) dispatcher);
+        }
     }
 }
