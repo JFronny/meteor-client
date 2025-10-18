@@ -2,7 +2,7 @@ import com.github.jengelman.gradle.plugins.shadow.transformers.PreserveFirstFoun
 import net.fabricmc.loom.task.prod.ClientProductionRunTask
 
 plugins {
-    id("fabric-loom") version "1.10-SNAPSHOT"
+    id("fabric-loom") version "1.11-SNAPSHOT"
     id("maven-publish")
     id("com.gradleup.shadow") version "9.2.2"
 }
@@ -49,6 +49,7 @@ repositories {
 }
 
 val modInclude: Configuration by configurations.creating
+val jij: Configuration by configurations.creating
 
 configurations {
     // include mods
@@ -57,6 +58,14 @@ configurations {
     }
     include.configure {
         extendsFrom(modInclude)
+    }
+
+    // include libraries (jar-in-jar)
+    implementation.configure {
+        extendsFrom(jij)
+    }
+    include.configure {
+        extendsFrom(jij)
     }
 }
 
@@ -67,9 +76,8 @@ dependencies {
     modImplementation("net.fabricmc:fabric-loader:${properties["loader_version"] as String}")
 
     // Fabric API
-    shadow(modImplementation(platform("net.fabricmc.fabric-api:fabric-api-bom:${properties["fapi_version"] as String}"))!!)
-    modImplementation("net.fabricmc.fabric-api:fabric-api")
-    shadow("net.fabricmc.fabric-api:fabric-api-base") {
+    modImplementation("net.fabricmc.fabric-api:fabric-api:${properties["fapi_version"] as String}")
+    shadow(fabricApi.module("fabric-api-base", properties["fapi_version"] as String) as ModuleDependency) {
         isTransitive = false
     }
 
@@ -87,17 +95,47 @@ dependencies {
     modCompileOnly("com.terraformersmc:modmenu:${properties["modmenu_version"] as String}")
 
     // Libraries
-    modInclude("meteordevelopment:orbit:${properties["orbit_version"] as String}")
-    modInclude("org.meteordev:starscript:${properties["starscript_version"] as String}")
-    modInclude("org.reflections:reflections:${properties["reflections_version"] as String}")
-    include("org.javassist:javassist:3.28.0-GA") // reflections dependency, included separately because modInclude doesn't handle this
-    modInclude("io.netty:netty-handler-proxy:${properties["netty_version"] as String}") { isTransitive = false }
-    modInclude("io.netty:netty-codec-socks:${properties["netty_version"] as String}") { isTransitive = false }
-    modInclude("de.florianmichael:WaybackAuthLib:${properties["waybackauthlib_version"] as String}")
+    jij("meteordevelopment:orbit:${properties["orbit_version"] as String}")
+    jij("org.meteordev:starscript:${properties["starscript_version"] as String}")
+    jij("org.reflections:reflections:${properties["reflections_version"] as String}")
+    jij("io.netty:netty-handler-proxy:${properties["netty_version"] as String}") { isTransitive = false }
+    jij("io.netty:netty-codec-socks:${properties["netty_version"] as String}") { isTransitive = false }
+    jij("de.florianmichael:WaybackAuthLib:${properties["waybackauthlib_version"] as String}")
 
     modInclude("io.gitlab.jfronny.libjf:libjf-unsafe-v0:${properties["libjf_version"] as String}")
-    include("io.gitlab.jfronny.libjf:libjf-base:${properties["libjf_version"] as String}")
+    modInclude("io.gitlab.jfronny.libjf:libjf-base:${properties["libjf_version"] as String}")
     modLocalRuntime("io.gitlab.jfronny.libjf:libjf-devutil:${properties["libjf_version"] as String}")
+}
+
+// Handle transitive dependencies for jar-in-jar
+// Based on implementation from BaseProject by FlorianMichael/EnZaXD
+// Source: https://github.com/FlorianMichael/BaseProject/blob/main/src/main/kotlin/de/florianmichael/baseproject/Fabric.kt
+// Licensed under Apache License 2.0
+afterEvaluate {
+    val jijConfig = configurations.findByName("jij") ?: return@afterEvaluate
+
+    // Dependencies to exclude from jar-in-jar
+    val excluded = setOf(
+        "org.slf4j",    // Logging provided by Minecraft
+        "jsr305"        // Compile time annotations only
+    )
+
+
+    jijConfig.incoming.resolutionResult.allDependencies.forEach { dep ->
+        val requested = dep.requested.displayName
+
+        if (excluded.any { requested.contains(it) }) return@forEach
+
+        val compileOnlyDep = dependencies.create(requested) {
+            isTransitive = false
+        }
+
+        val implDep = dependencies.create(compileOnlyDep)
+
+        dependencies.add("compileOnlyApi", compileOnlyDep)
+        dependencies.add("implementation", implDep)
+        dependencies.add("include", compileOnlyDep)
+    }
 }
 
 loom {
@@ -154,16 +192,10 @@ tasks {
         inputs.property("archivesName", project.base.archivesName.get())
 
         from("LICENSE") {
-            rename { "${it}_${inputs.properties["archivesName"]}" }
+            rename { "${it}-${inputs.properties["archivesName"]}" }
         }
 
         destinationDirectory.set(layout.buildDirectory.dir("devlibs"))
-
-        dependencies {
-            exclude {
-                it.moduleGroup == "org.slf4j"
-            }
-        }
 
         duplicatesStrategy = DuplicatesStrategy.FAIL
         filesMatching("fabric.mod.json") {
