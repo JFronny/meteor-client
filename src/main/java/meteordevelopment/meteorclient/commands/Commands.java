@@ -16,14 +16,14 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallba
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.client.network.ClientCommandSource;
 import net.minecraft.command.CommandRegistryAccess;
-import net.minecraft.command.CommandSource;
+import net.minecraft.command.permission.PermissionPredicate;
 
 import java.util.*;
 
 import static meteordevelopment.meteorclient.MeteorClient.mc;
 
 public class Commands {
-    public static final FabricClientCommandSource COMMAND_SOURCE = (FabricClientCommandSource) new ClientCommandSource(null, mc, true);
+    public static final FabricClientCommandSource COMMAND_SOURCE = (FabricClientCommandSource) new ClientCommandSource(null, mc, PermissionPredicate.ALL);
     public static final List<Command> COMMANDS = new ArrayList<>();
     public static CommandDispatcher<FabricClientCommandSource> DISPATCHER = new CommandDispatcher<>();
 

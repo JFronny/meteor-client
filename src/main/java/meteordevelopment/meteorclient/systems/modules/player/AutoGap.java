@@ -5,6 +5,7 @@
 
 package meteordevelopment.meteorclient.systems.modules.player;
 
+import it.unimi.dsi.fastutil.objects.ReferenceArrayList;
 import meteordevelopment.meteorclient.events.entity.player.ItemUseCrosshairTargetEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
 import meteordevelopment.meteorclient.pathing.PathManagers;
@@ -30,7 +31,6 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.registry.entry.RegistryEntry;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -136,7 +136,7 @@ public class AutoGap extends Module {
     private boolean eating;
     private int slot, prevSlot;
 
-    private final List<Class<? extends Module>> wasAura = new ArrayList<>();
+    private final List<Class<? extends Module>> wasAura = new ReferenceArrayList<>();
     private boolean wasBaritone;
 
     public AutoGap() {
@@ -236,10 +236,8 @@ public class AutoGap extends Module {
         // Resume auras
         if (pauseAuras.get()) {
             for (Class<? extends Module> klass : AURAS) {
-                Module module = Modules.get().get(klass);
-
-                if (wasAura.contains(klass) && !module.isActive()) {
-                    module.toggle();
+                if (wasAura.contains(klass)) {
+                    Modules.get().get(klass).enable();
                 }
             }
         }
@@ -305,31 +303,26 @@ public class AutoGap extends Module {
     }
 
     private int findSlot() {
-        boolean preferEGap = this.allowEgap.get() || requiresEGap;
-        int slot = -1;
-
         for (int i = 0; i < 9; i++) {
-            // Skip if item stack is empty
             ItemStack stack = mc.player.getInventory().getStack(i);
+
+            // Skip if item stack is empty
             if (stack.isEmpty()) continue;
 
             // Skip if item isn't a gap or egap
             if (isNotGapOrEGap(stack)) continue;
+
             Item item = stack.getItem();
 
-            // If egap was found and preferEGap is true we can return the current slot
-            if (item == Items.ENCHANTED_GOLDEN_APPLE && preferEGap) {
-                slot = i;
-                break;
-            }
+            // If egap was found and allowEgapSetting is true we can return the current slot
+            if (item == Items.ENCHANTED_GOLDEN_APPLE && allowEgap.get()) return i;
+
             // If gap was found and egap is not required we can return the current slot
-            else if (item == Items.GOLDEN_APPLE && !requiresEGap) {
-                slot = i;
-                if (!preferEGap) break;
-            }
+            if (item == Items.GOLDEN_APPLE && !requiresEGap) return i;
         }
 
-        return slot;
+        // No suitable gap or egap found
+        return -1;
     }
 
     private boolean isNotGapOrEGap(ItemStack stack) {

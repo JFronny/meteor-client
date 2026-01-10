@@ -17,7 +17,6 @@ import meteordevelopment.meteorclient.gui.widgets.input.WTextBox;
 import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.misc.CursorStyle;
 import meteordevelopment.meteorclient.utils.misc.input.Input;
-import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
@@ -54,6 +53,8 @@ public abstract class WidgetScreen extends Screen {
     private boolean closed;
     private boolean onClose;
     private boolean debug;
+
+    private boolean closing;
 
     private double lastMouseX, lastMouseY;
 
@@ -141,6 +142,8 @@ public abstract class WidgetScreen extends Screen {
 
         mouseX *= s;
         mouseY *= s;
+
+        if (debug && click.button() == GLFW_MOUSE_BUTTON_RIGHT) DEBUG_RENDERER.mouseReleased(root, new Click(mouseX, mouseY, click.buttonInfo()), 0);
 
         return root.mouseReleased(new Click(mouseX, mouseY, click.buttonInfo()));
     }
@@ -255,8 +258,12 @@ public abstract class WidgetScreen extends Screen {
         mouseX *= s;
         mouseY *= s;
 
-        animProgress += delta / 20 * 14;
+        animProgress += (delta / 20 * 14) * (closing ? -1 : 1);
         animProgress = MathHelper.clamp(animProgress, 0, 1);
+
+        if (closing && (animProgress == 0 || parent != null)) {
+            closeInternal();
+        }
 
         GuiKeyEvents.canUseKeys = true;
 
@@ -296,20 +303,15 @@ public abstract class WidgetScreen extends Screen {
     protected void onRenderBefore(DrawContext drawContext, float delta) {}
 
     @Override
-    public void resize(MinecraftClient client, int width, int height) {
-        super.resize(client, width, height);
+    public void resize(int width, int height) {
+        super.resize(width, height);
         root.invalidate();
     }
 
     @Override
     public void close() {
         if (!locked || lockedAllowClose) {
-            boolean preOnClose = onClose;
-            onClose = true;
-
-            removed();
-
-            onClose = preOnClose;
+            closing = true;
         }
     }
 
@@ -339,6 +341,16 @@ public abstract class WidgetScreen extends Screen {
                 };
             }
         }
+    }
+
+    private void closeInternal() {
+        boolean preOnClose = onClose;
+        onClose = true;
+
+        super.close();
+        removed();
+
+        onClose = preOnClose;
     }
 
     private void loopWidgets(WWidget widget, Consumer<WWidget> action) {

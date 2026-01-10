@@ -2,15 +2,15 @@ import com.github.jengelman.gradle.plugins.shadow.transformers.PreserveFirstFoun
 import net.fabricmc.loom.task.prod.ClientProductionRunTask
 
 plugins {
-    id("fabric-loom") version "1.11-SNAPSHOT"
+    alias(libs.plugins.fabric.loom)
     id("maven-publish")
-    id("com.gradleup.shadow") version "9.2.2"
+    alias(libs.plugins.shadow)
 }
 
 base {
     archivesName = properties["archives_base_name"] as String
     group = properties["maven_group"] as String
-    version = properties["fapi_version"] as String
+    version = libs.versions.fabric.api.get()
 }
 
 repositories {
@@ -71,40 +71,40 @@ configurations {
 
 dependencies {
     // Fabric
-    minecraft("com.mojang:minecraft:${properties["minecraft_version"] as String}")
-    mappings("net.fabricmc:yarn:${properties["yarn_mappings"] as String}:v2")
-    modImplementation("net.fabricmc:fabric-loader:${properties["loader_version"] as String}")
+    minecraft(libs.minecraft)
+    mappings(variantOf(libs.yarn) { classifier("v2") })
+    modImplementation(libs.fabric.loader)
 
     // Fabric API
-    modImplementation("net.fabricmc.fabric-api:fabric-api:${properties["fapi_version"] as String}")
-    shadow(fabricApi.module("fabric-api-base", properties["fapi_version"] as String) as ModuleDependency) {
+    val fapiVersion = libs.versions.fabric.api.get()
+    modImplementation("net.fabricmc.fabric-api:fabric-api:$fapiVersion")
+    shadow(fabricApi.module("fabric-api-base", fapiVersion) as ModuleDependency) {
         isTransitive = false
     }
+    productionRuntimeMods("maven.modrinth:fabric-api:$fapiVersion")
 
     // Compat fixes
-    modCompileOnly(fabricApi.module("fabric-renderer-indigo", properties["fapi_version"] as String))
-    modCompileOnly("maven.modrinth:sodium:${properties["sodium_version"] as String}") { isTransitive = false }
-    modCompileOnly("maven.modrinth:lithium:${properties["lithium_version"] as String}") { isTransitive = false }
-    modCompileOnly("maven.modrinth:iris:${properties["iris_version"] as String}") { isTransitive = false }
-    modCompileOnly("com.viaversion:viafabricplus:${properties["viafabricplus_version"] as String}") { isTransitive = false }
-    modCompileOnly("com.viaversion:viafabricplus-api:${properties["viafabricplus_version"] as String}") { isTransitive = false }
+    modCompileOnly(fabricApi.module("fabric-renderer-indigo", fapiVersion))
+    modCompileOnly(libs.sodium) { isTransitive = false }
+    modCompileOnly(libs.lithium) { isTransitive = false }
+    modCompileOnly(libs.iris) { isTransitive = false }
+    modCompileOnly(libs.viafabricplus) { isTransitive = false }
+    modCompileOnly(libs.viafabricplus.api) { isTransitive = false }
 
-    // Baritone (https://github.com/MeteorDevelopment/baritone)
-    modCompileOnly("meteordevelopment:baritone:${properties["baritone_version"] as String}-SNAPSHOT")
-    // ModMenu (https://github.com/TerraformersMC/ModMenu)
-    modCompileOnly("com.terraformersmc:modmenu:${properties["modmenu_version"] as String}")
+    modCompileOnly(libs.baritone)
+    modCompileOnly(libs.modmenu)
 
-    // Libraries
-    jij("meteordevelopment:orbit:${properties["orbit_version"] as String}")
-    jij("org.meteordev:starscript:${properties["starscript_version"] as String}")
-    jij("org.reflections:reflections:${properties["reflections_version"] as String}")
-    jij("io.netty:netty-handler-proxy:${properties["netty_version"] as String}") { isTransitive = false }
-    jij("io.netty:netty-codec-socks:${properties["netty_version"] as String}") { isTransitive = false }
-    jij("de.florianmichael:WaybackAuthLib:${properties["waybackauthlib_version"] as String}")
+    // Libraries (JAR-in-JAR)
+    jij(libs.orbit)
+    jij(libs.starscript)
+    jij(libs.reflections)
+    jij(libs.netty.handler.proxy) { isTransitive = false }
+    jij(libs.netty.codec.socks) { isTransitive = false }
+    jij(libs.waybackauthlib)
 
-    modInclude("io.gitlab.jfronny.libjf:libjf-unsafe-v0:${properties["libjf_version"] as String}")
-    modInclude("io.gitlab.jfronny.libjf:libjf-base:${properties["libjf_version"] as String}")
-    modLocalRuntime("io.gitlab.jfronny.libjf:libjf-devutil:${properties["libjf_version"] as String}")
+    modInclude(libs.libjf.base)
+    modInclude(libs.libjf.unsafe.v0)
+    modLocalRuntime(libs.libjf.devutil)
 }
 
 // Handle transitive dependencies for jar-in-jar
@@ -119,7 +119,6 @@ afterEvaluate {
         "org.slf4j",    // Logging provided by Minecraft
         "jsr305"        // Compile time annotations only
     )
-
 
     jijConfig.incoming.resolutionResult.allDependencies.forEach { dep ->
         val requested = dep.requested.displayName
@@ -154,8 +153,8 @@ tasks {
     processResources {
         val propertyMap = mapOf(
             "version"           to project.version,
-            "minecraft_version" to project.property("minecraft_version"),
-            "loader_version" to project.property("loader_version")
+            "minecraft_version" to libs.versions.minecraft.get(),
+            "loader_version"    to libs.versions.fabric.loader.get()
         )
 
         inputs.properties(propertyMap)
@@ -181,7 +180,6 @@ tasks {
     }
 
     withType<JavaCompile> {
-        options.release = 21
         options.compilerArgs.add("-Xlint:deprecation")
         options.compilerArgs.add("-Xlint:unchecked")
     }
@@ -230,7 +228,7 @@ publishing {
             from(components["java"])
             artifactId = "meteor-client"
 
-            version = properties["minecraft_version"] as String + "-SNAPSHOT"
+            version = libs.versions.minecraft.get() + "-SNAPSHOT"
         }
     }
 }
