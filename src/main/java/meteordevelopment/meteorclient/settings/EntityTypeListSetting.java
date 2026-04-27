@@ -8,6 +8,7 @@ package meteordevelopment.meteorclient.settings;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import meteordevelopment.meteorclient.utils.entity.EntityUtils;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
@@ -149,16 +150,16 @@ public class EntityTypeListSetting extends Setting<Set<EntityType<?>>> {
 
         public Builder defaultEnemies() {
             Set<EntityType<?>> set = new HashSet<>();
-//            for (EntityType<?> type : Registries.ENTITY_TYPE) {
-//                if (EntityUtils.isAttackable(type))
-//                    if (type == EntityType.PLAYER
-//                        || (type.getSpawnGroup().equals(SpawnGroup.MONSTER)
-//                            && type != EntityType.ENDERMAN
-//                            && type != EntityType.PIGLIN
-//                            && type != EntityType.ZOMBIFIED_PIGLIN
-//                    ))
-//                        set.add(type);
-//            }
+            for (EntityType<?> type : BuiltInRegistries.ENTITY_TYPE) {
+                if (EntityUtils.isAttackable(type))
+                    if (type == EntityType.PLAYER
+                        || (type.getCategory().equals(MobCategory.MONSTER)
+                            && type != EntityType.ENDERMAN
+                            && type != EntityType.PIGLIN
+                            && type != EntityType.ZOMBIFIED_PIGLIN
+                    ))
+                        set.add(type);
+            }
             defaultValue(new ObjectOpenHashSet<>(set));
             return this;
         }
