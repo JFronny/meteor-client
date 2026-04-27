@@ -5,20 +5,20 @@
 
 package meteordevelopment.meteorclient.utils.misc.input;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import meteordevelopment.meteorclient.MeteorClient;
-import meteordevelopment.meteorclient.mixin.KeyBindingAccessor;
-import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
-import net.minecraft.client.option.KeyBinding;
-import net.minecraft.client.util.InputUtil;
+import meteordevelopment.meteorclient.mixin.KeyMappingAccessor;
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
+import net.minecraft.client.KeyMapping;
 import org.lwjgl.glfw.GLFW;
 
 public class KeyBinds {
-    private static final KeyBinding.Category CATEGORY = KeyBinding.Category.create(MeteorClient.identifier("meteor-client"));
+    private static final KeyMapping.Category CATEGORY = KeyMapping.Category.register(MeteorClient.identifier("meteor-client"));
 
-    public static KeyBinding OPEN_GUI = KeyBindingHelper.registerKeyBinding(new KeyBinding("key.meteor-client.open-gui", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_SHIFT, CATEGORY));
+    public static KeyMapping OPEN_GUI = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.meteor-client.open-gui", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_SHIFT, CATEGORY));
 
-    public static int getKey(KeyBinding bind) {
-        return ((KeyBindingAccessor) bind).meteor$getKey().getCode();
+    public static int getKey(KeyMapping bind) {
+        return ((KeyMappingAccessor) bind).meteor$getKey().getValue();
     }
 
     public static void ensureInitialized() {

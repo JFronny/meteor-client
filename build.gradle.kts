@@ -1,11 +1,17 @@
+import com.github.jengelman.gradle.plugins.shadow.ShadowBasePlugin
+import com.github.jengelman.gradle.plugins.shadow.ShadowBasePlugin.Companion.shadow
+import com.github.jengelman.gradle.plugins.shadow.tasks.InheritManifest
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import com.github.jengelman.gradle.plugins.shadow.transformers.PreserveFirstFoundResourceTransformer
 import net.fabricmc.loom.task.prod.ClientProductionRunTask
+import kotlin.collections.listOf
 
 plugins {
     alias(libs.plugins.fabric.loom)
     id("maven-publish")
-    alias(libs.plugins.shadow)
 }
+
+apply<ShadowBasePlugin>()
 
 base {
     archivesName = properties["archives_base_name"] as String
@@ -53,7 +59,7 @@ val jij: Configuration by configurations.creating
 
 configurations {
     // include mods
-    modImplementation.configure {
+    implementation.configure {
         extendsFrom(modInclude)
     }
     include.configure {
@@ -72,27 +78,26 @@ configurations {
 dependencies {
     // Fabric
     minecraft(libs.minecraft)
-    mappings(variantOf(libs.yarn) { classifier("v2") })
-    modImplementation(libs.fabric.loader)
+    implementation(libs.fabric.loader)
 
     // Fabric API
     val fapiVersion = libs.versions.fabric.api.get()
-    modImplementation("net.fabricmc.fabric-api:fabric-api:$fapiVersion")
-    shadow(fabricApi.module("fabric-api-base", fapiVersion) as ModuleDependency) {
+    implementation("net.fabricmc.fabric-api:fabric-api:$fapiVersion")
+    "shadow"(fabricApi.module("fabric-api-base", fapiVersion) as ModuleDependency) {
         isTransitive = false
     }
     productionRuntimeMods("maven.modrinth:fabric-api:$fapiVersion")
 
     // Compat fixes
-    modCompileOnly(fabricApi.module("fabric-renderer-indigo", fapiVersion))
-    modCompileOnly(libs.sodium) { isTransitive = false }
-    modCompileOnly(libs.lithium) { isTransitive = false }
-    modCompileOnly(libs.iris) { isTransitive = false }
-    modCompileOnly(libs.viafabricplus) { isTransitive = false }
-    modCompileOnly(libs.viafabricplus.api) { isTransitive = false }
+    compileOnly(fabricApi.module("fabric-renderer-indigo", fapiVersion))
+    compileOnly(libs.sodium) { isTransitive = false }
+    compileOnly(libs.lithium) { isTransitive = false }
+    compileOnly(libs.iris) { isTransitive = false }
+    compileOnly(libs.viafabricplus) { isTransitive = false }
+    compileOnly(libs.viafabricplus.api) { isTransitive = false }
 
-    modCompileOnly(libs.baritone)
-    modCompileOnly(libs.modmenu)
+    compileOnly(libs.baritone)
+    compileOnly(libs.modmenu)
 
     // Libraries (JAR-in-JAR)
     jij(libs.orbit)
@@ -103,58 +108,63 @@ dependencies {
     jij(libs.waybackauthlib)
 
     modInclude(libs.libjf.base)
-    modInclude(libs.libjf.unsafe.v0)
-    modLocalRuntime(libs.libjf.devutil)
+    localRuntime(libs.libjf.devutil)
+}
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(libs.versions.jdk.get().toInt()))
+    }
+
+    withSourcesJar()
+    withJavadocJar()
 }
 
 // Handle transitive dependencies for jar-in-jar
-// Based on implementation from BaseProject by FlorianMichael/EnZaXD
-// Source: https://github.com/FlorianMichael/BaseProject/blob/main/src/main/kotlin/de/florianmichael/baseproject/Fabric.kt
+// Based on implementation from BaseProject by florianreuth/EnZaXD
+// Source: https://github.com/florianreuth/BaseProject/blob/main/src/main/kotlin/de/florianreuth/baseproject/Fabric.kt
 // Licensed under Apache License 2.0
-afterEvaluate {
-    val jijConfig = configurations.findByName("jij") ?: return@afterEvaluate
-
-    // Dependencies to exclude from jar-in-jar
-    val excluded = setOf(
-        "org.slf4j",    // Logging provided by Minecraft
-        "jsr305"        // Compile time annotations only
-    )
-
-    jijConfig.incoming.resolutionResult.allDependencies.forEach { dep ->
-        val requested = dep.requested.displayName
-
-        if (excluded.any { requested.contains(it) }) return@forEach
-
-        val compileOnlyDep = dependencies.create(requested) {
-            isTransitive = false
+val jijExcluded = setOf("org.slf4j", "jsr305")
+listOf("jij", "implementation", "include").forEach { configName ->
+    configurations.named(configName).configure {
+        defaultDependencies {
+            configurations.getByName("jij").incoming.resolutionResult.allComponents
+                .mapNotNull { it.id as? ModuleComponentIdentifier }
+                .forEach { id ->
+                    val notation = "${id.group}:${id.module}:${id.version}"
+                    if (jijExcluded.none { notation.contains(it) }) {
+                        add(project.dependencies.create(notation) {
+                            isTransitive = false
+                        })
+                    }
+                }
         }
-
-        val implDep = dependencies.create(compileOnlyDep)
-
-        dependencies.add("compileOnlyApi", compileOnlyDep)
-        dependencies.add("implementation", implDep)
-        dependencies.add("include", compileOnlyDep)
     }
 }
 
 loom {
-    accessWidenerPath = file("src/main/resources/meteor-client.accesswidener")
+    accessWidenerPath = file("src/main/resources/meteor-client.classtweaker")
+}
+
+fun toMinecraftCompat(version: String): String {
+    val match = Regex("""^(\d{2})\.([1-9]\d*)(?:\.([1-9]\d*))?$""")
+        .matchEntire(version)
+        ?: error("Invalid Minecraft version format: $version. Expected YY.D or YY.D.H")
+
+    val (year, drop, _) = match.destructured
+    return "~$year.$drop"
 }
 
 val prodClient by tasks.registering(ClientProductionRunTask::class)
 
-afterEvaluate {
-    tasks.migrateMappings.configure {
-        outputDir.set(project.file("src/main/java"))
-    }
-}
-
+lateinit var tp: TaskProvider<ShadowJar>
 tasks {
     processResources {
         val propertyMap = mapOf(
-            "version"           to project.version,
-            "minecraft_version" to libs.versions.minecraft.get(),
-            "loader_version"    to libs.versions.fabric.loader.get()
+            "version" to project.version,
+            "jdk_version" to libs.versions.jdk.get(),
+            "minecraft_version" to toMinecraftCompat(libs.versions.minecraft.get()),
+            "loader_version" to libs.versions.fabric.loader.get()
         )
 
         inputs.properties(propertyMap)
@@ -164,6 +174,8 @@ tasks {
     }
 
     jar {
+        destinationDirectory = layout.buildDirectory.dir("devlibs")
+        archiveClassifier = "unshaded"
         inputs.property("archivesName", project.base.archivesName.get())
 
         from("LICENSE") {
@@ -171,21 +183,19 @@ tasks {
         }
     }
 
-    java {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
-
-        withSourcesJar()
-        withJavadocJar()
+    withType<JavaCompile>().configureEach {
+        options.compilerArgs.addAll(
+            listOf(
+                "-Xlint:deprecation",
+                "-Xlint:unchecked"
+            )
+        )
     }
 
-    withType<JavaCompile> {
-        options.compilerArgs.add("-Xlint:deprecation")
-        options.compilerArgs.add("-Xlint:unchecked")
-    }
-
-    shadowJar {
+    val shadowJar by registering(ShadowJar::class) {
+        dependsOn(jar)
         configurations = listOf(project.configurations.shadow.get())
+        from(zipTree(jar.get().archiveFile))
 
         inputs.property("archivesName", project.base.archivesName.get())
 
@@ -193,7 +203,7 @@ tasks {
             rename { "${it}-${inputs.properties["archivesName"]}" }
         }
 
-        destinationDirectory.set(layout.buildDirectory.dir("devlibs"))
+        destinationDirectory.set(layout.buildDirectory.dir("libs"))
 
         duplicatesStrategy = DuplicatesStrategy.FAIL
         filesMatching("fabric.mod.json") {
@@ -202,12 +212,23 @@ tasks {
         transform<PreserveFirstFoundResourceTransformer> {
             resources.add("fabric.mod.json")
         }
-    }
 
-    remapJar {
-        dependsOn(shadowJar)
-        inputFile.set(shadowJar.get().archiveFile)
+        val baseManifest = jar.get().manifest
+        manifest = object : InheritManifest, Manifest by baseManifest {
+            override fun inheritFrom(
+                vararg inheritPaths: Any,
+                action: Action<ManifestMergeSpec>,
+            ) {
+                inheritPaths.forEach { from(it, action) }
+            }
+        }
     }
+    tp = shadowJar
+
+//    remapJar {
+//        dependsOn(shadowJar)
+//        inputFile.set(shadowJar.get().archiveFile)
+//    }
 
     javadoc {
         with(options as StandardJavadocDocletOptions) {
@@ -218,6 +239,7 @@ tasks {
     }
 
     build {
+        dependsOn(shadowJar)
         dependsOn("javadocJar")
     }
 }
@@ -226,9 +248,10 @@ publishing {
     publications {
         create<MavenPublication>("mavenJava") {
             from(components["java"])
+            setArtifacts(listOf(mapOf("source" to tp, "classifier" to null), tasks.named("sourcesJar")))
             artifactId = "meteor-client"
 
-            version = libs.versions.minecraft.get() + "-SNAPSHOT"
+            version = "${libs.versions.minecraft.get()}-SNAPSHOT"
         }
     }
 }

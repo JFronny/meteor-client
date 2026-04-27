@@ -9,4 +9,13 @@ pluginManagement {
     }
 }
 
+buildscript {
+    repositories {
+        gradlePluginPortal()
+    }
+    dependencies {
+        classpath("com.gradleup.shadow:com.gradleup.shadow.gradle.plugin:9.4.1")
+    }
+}
+
 rootProject.name = "meteor-client"

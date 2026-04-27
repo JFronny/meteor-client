@@ -5,23 +5,20 @@
 
 package meteordevelopment.meteorclient.settings;
 
-import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import meteordevelopment.meteorclient.utils.entity.EntityUtils;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.SpawnGroup;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtElement;
-import net.minecraft.nbt.NbtList;
-import net.minecraft.nbt.NbtString;
-import net.minecraft.registry.Registries;
-import net.minecraft.util.Identifier;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.MobCategory;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -49,39 +46,40 @@ public class EntityTypeListSetting extends Setting<Set<EntityType<?>>> {
 
         try {
             for (String value : values) {
-                EntityType<?> entity = parseId(Registries.ENTITY_TYPE, value);
+                EntityType<?> entity = parseId(BuiltInRegistries.ENTITY_TYPE, value);
                 if (entity != null) entities.add(entity);
                 else {
                     String lowerValue = value.trim().toLowerCase();
                     if (!groups.contains(lowerValue)) continue;
 
-                    for (EntityType<?> entityType : Registries.ENTITY_TYPE) {
+                    for (EntityType<?> entityType : BuiltInRegistries.ENTITY_TYPE) {
                         if (filter != null && !filter.test(entityType)) continue;
 
                         switch (lowerValue) {
                             case "animal" -> {
-                                if (entityType.getSpawnGroup() == SpawnGroup.CREATURE) entities.add(entityType);
+                                if (entityType.getCategory() == MobCategory.CREATURE) entities.add(entityType);
                             }
                             case "wateranimal" -> {
-                                if (entityType.getSpawnGroup() == SpawnGroup.WATER_AMBIENT
-                                    || entityType.getSpawnGroup() == SpawnGroup.WATER_CREATURE
-                                    || entityType.getSpawnGroup() == SpawnGroup.UNDERGROUND_WATER_CREATURE
-                                    || entityType.getSpawnGroup() == SpawnGroup.AXOLOTLS) entities.add(entityType);
+                                if (entityType.getCategory() == MobCategory.WATER_AMBIENT
+                                    || entityType.getCategory() == MobCategory.WATER_CREATURE
+                                    || entityType.getCategory() == MobCategory.UNDERGROUND_WATER_CREATURE
+                                    || entityType.getCategory() == MobCategory.AXOLOTLS) entities.add(entityType);
                             }
                             case "monster" -> {
-                                if (entityType.getSpawnGroup() == SpawnGroup.MONSTER) entities.add(entityType);
+                                if (entityType.getCategory() == MobCategory.MONSTER) entities.add(entityType);
                             }
                             case "ambient" -> {
-                                if (entityType.getSpawnGroup() == SpawnGroup.AMBIENT) entities.add(entityType);
+                                if (entityType.getCategory() == MobCategory.AMBIENT) entities.add(entityType);
                             }
                             case "misc" -> {
-                                if (entityType.getSpawnGroup() == SpawnGroup.MISC) entities.add(entityType);
+                                if (entityType.getCategory() == MobCategory.MISC) entities.add(entityType);
                             }
                         }
                     }
                 }
             }
-        } catch (Exception ignored) {}
+        } catch (Exception _) {
+        }
 
         return entities;
     }
@@ -95,8 +93,9 @@ public class EntityTypeListSetting extends Setting<Set<EntityType<?>>> {
     public List<String> getSuggestions() {
         if (suggestions == null) {
             suggestions = new ArrayList<>(groups);
-            for (EntityType<?> entityType : Registries.ENTITY_TYPE) {
-                if (filter == null || filter.test(entityType)) suggestions.add(Registries.ENTITY_TYPE.getId(entityType).toString());
+            for (EntityType<?> entityType : BuiltInRegistries.ENTITY_TYPE) {
+                if (filter == null || filter.test(entityType))
+                    suggestions.add(BuiltInRegistries.ENTITY_TYPE.getKey(entityType).toString());
             }
         }
 
@@ -104,10 +103,10 @@ public class EntityTypeListSetting extends Setting<Set<EntityType<?>>> {
     }
 
     @Override
-    public NbtCompound save(NbtCompound tag) {
-        NbtList valueTag = new NbtList();
+    public CompoundTag save(CompoundTag tag) {
+        ListTag valueTag = new ListTag();
         for (EntityType<?> entityType : get()) {
-            valueTag.add(NbtString.of(Registries.ENTITY_TYPE.getId(entityType).toString()));
+            valueTag.add(StringTag.valueOf(BuiltInRegistries.ENTITY_TYPE.getKey(entityType).toString()));
         }
         tag.put("value", valueTag);
 
@@ -115,12 +114,12 @@ public class EntityTypeListSetting extends Setting<Set<EntityType<?>>> {
     }
 
     @Override
-    public Set<EntityType<?>> load(NbtCompound tag) {
+    public Set<EntityType<?>> load(CompoundTag tag) {
         get().clear();
 
-        NbtList valueTag = tag.getListOrEmpty("value");
-        for (NbtElement tagI : valueTag) {
-            EntityType<?> type = Registries.ENTITY_TYPE.get(Identifier.of(tagI.asString().orElse("")));
+        ListTag valueTag = tag.getListOrEmpty("value");
+        for (Tag tagI : valueTag) {
+            EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.getValue(Identifier.parse(tagI.asString().orElse("")));
             if (filter == null || filter.test(type)) get().add(type);
         }
 
@@ -143,23 +142,23 @@ public class EntityTypeListSetting extends Setting<Set<EntityType<?>>> {
             return this;
         }
 
-        public Builder filter(Predicate<EntityType<?>> filter){
+        public Builder filter(Predicate<EntityType<?>> filter) {
             this.filter = filter;
             return this;
         }
 
         public Builder defaultEnemies() {
             Set<EntityType<?>> set = new HashSet<>();
-            for (EntityType<?> type : Registries.ENTITY_TYPE) {
-                if (EntityUtils.isAttackable(type))
-                    if (type == EntityType.PLAYER
-                        || (type.getSpawnGroup().equals(SpawnGroup.MONSTER)
-                            && type != EntityType.ENDERMAN
-                            && type != EntityType.PIGLIN
-                            && type != EntityType.ZOMBIFIED_PIGLIN
-                    ))
-                        set.add(type);
-            }
+//            for (EntityType<?> type : Registries.ENTITY_TYPE) {
+//                if (EntityUtils.isAttackable(type))
+//                    if (type == EntityType.PLAYER
+//                        || (type.getSpawnGroup().equals(SpawnGroup.MONSTER)
+//                            && type != EntityType.ENDERMAN
+//                            && type != EntityType.PIGLIN
+//                            && type != EntityType.ZOMBIFIED_PIGLIN
+//                    ))
+//                        set.add(type);
+//            }
             defaultValue(new ObjectOpenHashSet<>(set));
             return this;
         }

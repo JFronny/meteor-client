@@ -14,16 +14,16 @@ import meteordevelopment.meteorclient.pathing.PathManagers;
 import meteordevelopment.meteorclient.utils.PostInit;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
-import net.minecraft.client.network.ClientCommandSource;
-import net.minecraft.command.CommandRegistryAccess;
-import net.minecraft.command.permission.PermissionPredicate;
+import net.minecraft.client.multiplayer.ClientSuggestionProvider;
+import net.minecraft.commands.CommandBuildContext;
+import net.minecraft.server.permissions.PermissionSet;
 
 import java.util.*;
 
 import static meteordevelopment.meteorclient.MeteorClient.mc;
 
 public class Commands {
-    public static final FabricClientCommandSource COMMAND_SOURCE = (FabricClientCommandSource) new ClientCommandSource(null, mc, PermissionPredicate.ALL);
+    public static final FabricClientCommandSource COMMAND_SOURCE = (FabricClientCommandSource) new ClientSuggestionProvider(null, mc, PermissionSet.ALL_PERMISSIONS);
     public static final List<Command> COMMANDS = new ArrayList<>();
     public static CommandDispatcher<FabricClientCommandSource> DISPATCHER = new CommandDispatcher<>();
 
@@ -66,6 +66,7 @@ public class Commands {
         add(new InputCommand());
         add(new WaspCommand());
         add(new LocateCommand());
+        add(new HelpCommand());
 
         COMMANDS.sort(Comparator.comparing(Command::getName));
 
@@ -108,8 +109,8 @@ public class Commands {
     }
 
     /**
-     * Argument types that rely on Minecraft registries access those registries through a {@link CommandRegistryAccess}
-     * object. Since dynamic registries are specific to each server, we need to make a new CommandRegistryAccess object
+     * Argument types that rely on Minecraft registries access those registries through a {@link CommandBuildContext}
+     * object. Since dynamic registries are specific to each server, we need to make a new CommandBuildContext object
      * every time we join a server.
      * <p>
      * The command tree and by extension the {@link CommandDispatcher} also have to be rebuilt because:
@@ -124,7 +125,7 @@ public class Commands {
      *
      * @author Crosby
      */
-    private static void onJoin(CommandDispatcher<FabricClientCommandSource> dispatcher, CommandRegistryAccess registryAccess) {
+    private static void onJoin(CommandDispatcher<FabricClientCommandSource> dispatcher, CommandBuildContext registryAccess) {
         DISPATCHER = dispatcher;
         Command.REGISTRY_ACCESS = registryAccess;
         for (Command command : COMMANDS) {

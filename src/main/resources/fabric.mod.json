@@ -20,7 +20,7 @@
   "entrypoints": {
     "client": ["meteordevelopment.meteorclient.MeteorClient"],
     "libjf:asm": ["meteordevelopment.meteorclient.asm.Asm"],
-    "modmenu": ["meteordevelopment.meteorclient.ModMenuIntegration"]
+    "modmenu": ["meteordevelopment.meteorclient.modintegration.ModMenuIntegration"]
   },
   "mixins": [
     "meteor-client.mixins.json",
@@ -30,20 +30,24 @@
     "meteor-client-lithium.mixins.json",
     "meteor-client-viafabricplus.mixins.json"
   ],
-  "accessWidener": "meteor-client.accesswidener",
+  "accessWidener": "meteor-client.classtweaker",
   "custom": {
-    "fabric-api:module-lifecycle": "stable"
+    "fabric-api:module-lifecycle": "stable",
+    "badoptimizations:cache_hooks": {
+      "lightmap": "meteordevelopment.meteorclient.modintegration.BadOptimizationsHook"
+    }
   },
   "depends": {
-    "java": ">=21",
-    "minecraft": ["${minecraft_version}"],
+    "java": ">=${jdk_version}",
+    "minecraft": "${minecraft_version}",
     "fabricloader": ">=${loader_version}"
   },
   "breaks": {
     "optifabric": "*",
     "feather": "*",
-    "sodium": "<0.7.0",
+    "sodium": "<0.8.7",
     "morechathistory": "*",
+    "lithium": "<0.22.1",
     "quilt_loader": "*"
   }
 }
