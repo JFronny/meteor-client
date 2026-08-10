@@ -14,7 +14,9 @@ import meteordevelopment.meteorclient.gui.GuiThemes;
 import meteordevelopment.meteorclient.gui.WidgetScreen;
 import meteordevelopment.meteorclient.gui.tabs.Tabs;
 import meteordevelopment.meteorclient.systems.Systems;
+import meteordevelopment.meteorclient.systems.hud.screens.AddHudElementScreen;
 import meteordevelopment.meteorclient.systems.hud.screens.HudEditorScreen;
+import meteordevelopment.meteorclient.systems.hud.screens.HudElementScreen;
 import meteordevelopment.meteorclient.systems.modules.Categories;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.utils.PostInit;
@@ -39,6 +41,8 @@ import org.spongepowered.asm.mixin.MixinEnvironment;
 
 import java.io.File;
 import java.lang.invoke.MethodHandles;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class MeteorClient implements ClientModInitializer {
     public static final String MOD_ID = "meteor-client";
@@ -156,7 +160,7 @@ public class MeteorClient implements ClientModInitializer {
     }
 
     private void toggleGui() {
-        if (Utils.canCloseGui()) mc.screen.onClose();
+        if (Utils.canCloseGui()) mc.gui.screen().onClose();
         else if (Utils.canOpenGui()) Tabs.get().getFirst().openScreen(GuiThemes.get());
     }
 
@@ -167,15 +171,17 @@ public class MeteorClient implements ClientModInitializer {
     @EventHandler(priority = EventPriority.LOWEST)
     private void onOpenScreen(OpenScreenEvent event) {
         if (event.screen instanceof WidgetScreen) {
-            if (!wasWidgetScreen) wasHudHiddenRoot = mc.options.hideGui;
+            if (!wasWidgetScreen) wasHudHiddenRoot = mc.gameRenderer.gameRenderState().guiRenderState.isHudHidden;
             if (GuiThemes.get().hideHUD() || wasHudHiddenRoot) {
                 // Always show the MC HUD in the HUD editor screen since people like
                 // to align some items with the hotbar or chat
-                mc.options.hideGui = !(event.screen instanceof HudEditorScreen);
+                mc.gameRenderer.gameRenderState().guiRenderState.isHudHidden = !(event.screen instanceof HudEditorScreen)
+                    && !(event.screen instanceof AddHudElementScreen)
+                    && !(event.screen instanceof HudElementScreen);
             }
         } else {
-            if (wasWidgetScreen) mc.options.hideGui = wasHudHiddenRoot;
-            wasHudHiddenRoot = mc.options.hideGui;
+            if (wasWidgetScreen) mc.gameRenderer.gameRenderState().guiRenderState.isHudHidden = wasHudHiddenRoot;
+            wasHudHiddenRoot = mc.gameRenderer.gameRenderState().guiRenderState.isHudHidden;
         }
 
         wasWidgetScreen = event.screen instanceof WidgetScreen;

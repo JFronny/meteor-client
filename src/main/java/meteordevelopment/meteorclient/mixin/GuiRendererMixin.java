@@ -11,16 +11,14 @@ import meteordevelopment.meteorclient.events.render.Render2DEvent;
 import meteordevelopment.meteorclient.gui.WidgetScreen;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.systems.modules.render.HideRenderModules;
+import meteordevelopment.meteorclient.systems.hud.screens.HudEditorScreen;
 import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.render.MeteorMcGuiRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.render.GuiRenderer;
 import net.minecraft.client.gui.render.pip.PictureInPictureRenderer;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.feature.FeatureRenderDispatcher;
-import net.minecraft.client.renderer.fog.FogRenderer;
 import net.minecraft.client.renderer.state.gui.GuiRenderState;
 import net.minecraft.util.profiling.Profiler;
 import org.spongepowered.asm.mixin.Mixin;
@@ -40,53 +38,66 @@ public abstract class GuiRendererMixin {
     private MeteorMcGuiRenderer guiRenderer;
 
     @Inject(method = "<init>", at = @At("RETURN"))
-    private void init$meteor(GuiRenderState renderState, MultiBufferSource.BufferSource bufferSource, SubmitNodeCollector submitNodeCollector, FeatureRenderDispatcher featureRenderDispatcher, List<PictureInPictureRenderer<?>> pictureInPictureRenderers, CallbackInfo ci) {
+    private void init$meteor(GuiRenderState renderState, FeatureRenderDispatcher featureRenderDispatcher, List<PictureInPictureRenderer<?>> pictureInPictureRenderers, CallbackInfo ci) {
         if ((GuiRenderer) (Object) this instanceof MeteorMcGuiRenderer) return;
 
         this.renderState = new GuiRenderState();
 
         guiRenderer = new MeteorMcGuiRenderer(
             this.renderState,
-            bufferSource,
-            submitNodeCollector,
             featureRenderDispatcher,
             pictureInPictureRenderers
         );
     }
 
-    @Inject(method = "draw", at = @At("HEAD"))
-    private void draw$executeDrawRange(CallbackInfo ci) {
+    @Inject(method = "render", at = @At("HEAD"))
+    private void render$preGui(CallbackInfo ci) {
         if ((GuiRenderer) (Object) this instanceof MeteorMcGuiRenderer) return;
         if (Modules.get().isActive(HideRenderModules.class)) return;
         var mc = Minecraft.getInstance();
 
+        if (mc.gui.screen() == null || mc.gui.screen() instanceof WidgetScreen) return;
+        meteor$render2D(mc);
+    }
+
+    @Inject(method = "render", at = @At("TAIL"))
+    private void render$postGui(CallbackInfo ci) {
+        if ((GuiRenderer) (Object) this instanceof MeteorMcGuiRenderer) return;
+        var mc = Minecraft.getInstance();
+
+        RenderSystem.getDevice().createCommandEncoder().clearDepthTexture(mc.gameRenderer.mainRenderTarget().getDepthTexture(), 1.0);
+
+        if (mc.gui.screen() == null || mc.gui.screen() instanceof WidgetScreen) {
+            meteor$render2D(mc);
+        }
+
+        guiRenderer.endFrame();
+    }
+
+    @Unique
+    private void meteor$render2D(Minecraft mc) {
         var mouseX = (int) mc.mouseHandler.getScaledXPos(mc.getWindow());
         var mouseY = (int) mc.mouseHandler.getScaledYPos(mc.getWindow());
-
-        var fogRenderer = ((GameRendererAccessor) mc.gameRenderer).meteor$fogRenderer();
-        var delta = mc.getDeltaTracker().getGameTimeDeltaPartialTick(true);
-
-        if (Utils.canUpdate()) {
+        if (Utils.canUpdate() || HudEditorScreen.isOpen()) {
             Profiler.get().push(MeteorClient.MOD_ID + "_render_2d");
-
             Utils.unscaledProjection();
 
             var graphics = new GuiGraphicsExtractor(mc, renderState, mouseX, mouseY);
-            MeteorClient.EVENT_BUS.post(Render2DEvent.get(graphics, graphics.guiWidth(), graphics.guiWidth(), delta));
-            guiRenderer.render(fogRenderer.getBuffer(FogRenderer.FogMode.NONE));
+            var tickDelta = mc.getDeltaTracker().getGameTimeDeltaPartialTick(true);
+
+            MeteorClient.EVENT_BUS.post(Render2DEvent.get(graphics, graphics.guiWidth(), graphics.guiHeight(), tickDelta));
+            guiRenderer.render();
 
             Utils.scaledProjection();
-
             Profiler.get().pop();
         }
 
-        if (mc.screen instanceof WidgetScreen widgetScreen) {
+        if (mc.gui.screen() instanceof WidgetScreen widgetScreen) {
             var graphics = new GuiGraphicsExtractor(mc, renderState, mouseX, mouseY);
-            widgetScreen.renderCustom(graphics, mouseX, mouseY, delta);
-            guiRenderer.render(fogRenderer.getBuffer(FogRenderer.FogMode.NONE));
-        }
+            var guiDelta = mc.getDeltaTracker().getGameTimeDeltaTicks();
 
-        RenderSystem.getDevice().createCommandEncoder().clearDepthTexture(mc.getMainRenderTarget().getDepthTexture(), 1.0);
-        guiRenderer.endFrame();
+            widgetScreen.renderCustom(graphics, mouseX, mouseY, guiDelta);
+            guiRenderer.render();
+        }
     }
 }

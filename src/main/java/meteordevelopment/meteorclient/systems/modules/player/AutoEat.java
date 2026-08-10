@@ -5,6 +5,7 @@
 
 package meteordevelopment.meteorclient.systems.modules.player;
 
+import it.unimi.dsi.fastutil.booleans.BooleanBinaryOperator;
 import it.unimi.dsi.fastutil.objects.ReferenceArrayList;
 import meteordevelopment.meteorclient.events.entity.player.ItemUseCrosshairTargetEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
@@ -29,7 +30,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 import java.util.List;
-import java.util.function.BiPredicate;
 
 public class AutoEat extends Module {
     @SuppressWarnings("unchecked")
@@ -54,7 +54,8 @@ public class AutoEat extends Module {
             Items.SPIDER_EYE,
             Items.SUSPICIOUS_STEW
         )
-        .filter(item -> item.components().get(DataComponents.FOOD) != null)
+        .filter(Utils::isFood)
+        .bypassFilterWhenSavingAndLoading()
         .build()
     );
 
@@ -136,6 +137,7 @@ public class AutoEat extends Module {
     @EventHandler(priority = EventPriority.LOW)
     private void onTick(TickEvent.Pre event) {
         // Don't eat if AutoGap is already eating
+        if (mc.player == null) return;
         if (Modules.get().get(AutoGap.class).isEating()) return;
 
         // case 1: Already eating
@@ -147,7 +149,7 @@ public class AutoEat extends Module {
             }
 
             // Check if the item in current slot is not food anymore
-            if (mc.player.getInventory().getItem(slot).get(DataComponents.FOOD) == null) {
+            if (!Utils.isFood(mc.player.getInventory().getItem(slot))) {
                 int newSlot = findSlot();
 
                 // Stop if no food found
@@ -178,6 +180,7 @@ public class AutoEat extends Module {
     private void startEating() {
         prevSlot = mc.player.getInventory().getSelectedSlot();
         eat();
+        if (!eating) return;
 
         // Pause auras
         wasAura.clear();
@@ -262,6 +265,7 @@ public class AutoEat extends Module {
     }
 
     public boolean shouldEat() {
+        if (mc.player == null) return false;
         boolean healthLow = mc.player.getHealth() <= healthThreshold.get();
         boolean hungerLow = mc.player.getFoodData().getFoodLevel() <= hungerThreshold.get();
         if (!thresholdMode.get().test(healthLow, hungerLow)) return false;
@@ -269,10 +273,11 @@ public class AutoEat extends Module {
         slot = findSlot();
         if (slot == -1) return false;
 
-        FoodProperties food = mc.player.getInventory().getItem(slot).get(DataComponents.FOOD);
-        if (food == null) return false;
+        ItemStack item = mc.player.getInventory().getItem(slot);
+        FoodProperties prop = item.get(DataComponents.FOOD);
+        if (prop == null || !Utils.isFood(item)) return false;
 
-        return (mc.player.getFoodData().needsFood() || food.canAlwaysEat());
+        return (mc.player.getFoodData().needsFood() || prop.canAlwaysEat());
     }
 
     /**
@@ -282,8 +287,7 @@ public class AutoEat extends Module {
     private int findSlot() {
         // prefer offhand
         Item offHandItem = mc.player.getOffhandItem().getItem();
-        FoodProperties offHandFood = offHandItem.components().get(DataComponents.FOOD);
-        if (offHandFood != null && !blacklist.get().contains(offHandItem)) return SlotUtils.OFFHAND;
+        if (Utils.isFood(offHandItem) && !blacklist.get().contains(offHandItem)) return SlotUtils.OFFHAND;
 
         // if offhand empty, prefer best in hotbar
         int slot = findBestFood(SlotUtils.HOTBAR_START, SlotUtils.HOTBAR_END);
@@ -305,6 +309,7 @@ public class AutoEat extends Module {
             // Skip if item isn't food
             ItemStack stack = mc.player.getInventory().getItem(i);
             FoodProperties food = stack.get(DataComponents.FOOD);
+            if (!Utils.isFood(stack)) continue;
             if (food == null) continue;
 
             // Skip if item is in blacklist
@@ -323,19 +328,19 @@ public class AutoEat extends Module {
     }
 
     public enum ThresholdMode {
-        Health((health, hunger) -> health),
-        Hunger((health, hunger) -> hunger),
+        Health((health, _) -> health),
+        Hunger((_, hunger) -> hunger),
         Any((health, hunger) -> health || hunger),
         Both((health, hunger) -> health && hunger);
 
-        private final BiPredicate<Boolean, Boolean> predicate;
+        private final BooleanBinaryOperator predicate;
 
-        ThresholdMode(BiPredicate<Boolean, Boolean> predicate) {
+        ThresholdMode(BooleanBinaryOperator predicate) {
             this.predicate = predicate;
         }
 
         public boolean test(boolean health, boolean hunger) {
-            return predicate.test(health, hunger);
+            return predicate.apply(health, hunger);
         }
     }
 

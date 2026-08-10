@@ -15,6 +15,7 @@ import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.MobCategory;
 
 import java.util.ArrayList;
@@ -91,7 +92,7 @@ public class EntityTypeListSetting extends Setting<Set<EntityType<?>>> {
     }
 
     @Override
-    public List<String> getSuggestions() {
+    public Iterable<String> getSuggestions() {
         if (suggestions == null) {
             suggestions = new ArrayList<>(groups);
             for (EntityType<?> entityType : BuiltInRegistries.ENTITY_TYPE) {
@@ -151,14 +152,17 @@ public class EntityTypeListSetting extends Setting<Set<EntityType<?>>> {
         public Builder defaultEnemies() {
             Set<EntityType<?>> set = new HashSet<>();
             for (EntityType<?> type : BuiltInRegistries.ENTITY_TYPE) {
-                if (EntityUtils.isAttackable(type))
-                    if (type == EntityType.PLAYER
-                        || (type.getCategory().equals(MobCategory.MONSTER)
-                            && type != EntityType.ENDERMAN
-                            && type != EntityType.PIGLIN
-                            && type != EntityType.ZOMBIFIED_PIGLIN
-                    ))
-                        set.add(type);
+                if (!EntityUtils.isAttackable(type)) {
+                    continue;
+                }
+                if (type == EntityTypes.PLAYER
+                    || (type.getCategory().equals(MobCategory.MONSTER)
+                    && type != EntityTypes.ENDERMAN
+                    && type != EntityTypes.PIGLIN
+                    && type != EntityTypes.ZOMBIFIED_PIGLIN
+                )) {
+                    set.add(type);
+                }
             }
             defaultValue(new ObjectOpenHashSet<>(set));
             return this;

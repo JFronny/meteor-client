@@ -13,6 +13,7 @@ import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.friends.Friends;
 import meteordevelopment.meteorclient.systems.modules.Categories;
 import meteordevelopment.meteorclient.systems.modules.Module;
+import meteordevelopment.meteorclient.utils.misc.ListMode;
 import meteordevelopment.orbit.EventHandler;
 import meteordevelopment.orbit.EventPriority;
 import net.minecraft.core.BlockPos;
@@ -42,7 +43,7 @@ public class NoInteract extends Module {
     private final Setting<ListMode> blockMineMode = sgBlocks.add(new EnumSetting.Builder<ListMode>()
         .name("block-mine-mode")
         .description("List mode to use for block mine.")
-        .defaultValue(ListMode.BlackList)
+        .defaultValue(ListMode.Blacklist)
         .build()
     );
 
@@ -55,7 +56,7 @@ public class NoInteract extends Module {
     private final Setting<ListMode> blockInteractMode = sgBlocks.add(new EnumSetting.Builder<ListMode>()
         .name("block-interact-mode")
         .description("List mode to use for block interact.")
-        .defaultValue(ListMode.BlackList)
+        .defaultValue(ListMode.Blacklist)
         .build()
     );
 
@@ -78,7 +79,7 @@ public class NoInteract extends Module {
     private final Setting<ListMode> entityHitMode = sgEntities.add(new EnumSetting.Builder<ListMode>()
         .name("entity-hit-mode")
         .description("List mode to use for entity hit.")
-        .defaultValue(ListMode.BlackList)
+        .defaultValue(ListMode.Blacklist)
         .build()
     );
 
@@ -92,7 +93,7 @@ public class NoInteract extends Module {
     private final Setting<ListMode> entityInteractMode = sgEntities.add(new EnumSetting.Builder<ListMode>()
         .name("entity-interact-mode")
         .description("List mode to use for entity interact.")
-        .defaultValue(ListMode.BlackList)
+        .defaultValue(ListMode.Blacklist)
         .build()
     );
 
@@ -149,13 +150,8 @@ public class NoInteract extends Module {
     }
 
     private boolean shouldAttackBlock(BlockPos blockPos) {
-        if (blockMineMode.get() == ListMode.WhiteList &&
-            blockMine.get().contains(mc.level.getBlockState(blockPos).getBlock())) {
-            return false;
-        }
-
-        return blockMineMode.get() != ListMode.BlackList ||
-            !blockMine.get().contains(mc.level.getBlockState(blockPos).getBlock());
+        boolean blockInList = blockMine.get().contains(mc.level.getBlockState(blockPos).getBlock());
+        return blockMineMode.get().allows(blockInList);
     }
 
     private boolean shouldInteractBlock(BlockHitResult hitResult, InteractionHand hand) {
@@ -167,13 +163,8 @@ public class NoInteract extends Module {
         }
 
         // Blocks
-        if (blockInteractMode.get() == ListMode.BlackList &&
-            blockInteract.get().contains(mc.level.getBlockState(hitResult.getBlockPos()).getBlock())) {
-            return false;
-        }
-
-        return blockInteractMode.get() != ListMode.WhiteList ||
-            blockInteract.get().contains(mc.level.getBlockState(hitResult.getBlockPos()).getBlock());
+        boolean blockInList = blockInteract.get().contains(mc.level.getBlockState(hitResult.getBlockPos()).getBlock());
+        return blockInteractMode.get().allows(blockInList);
     }
 
     private boolean shouldAttackEntity(Entity entity) {
@@ -194,11 +185,7 @@ public class NoInteract extends Module {
             return false;
 
         // Entities
-        if (entityHitMode.get() == ListMode.BlackList &&
-            entityHit.get().contains(entity.getType())) {
-            return false;
-        } else return entityHitMode.get() != ListMode.WhiteList ||
-            entityHit.get().contains(entity.getType());
+        return entityHitMode.get().allows(entityHit.get().contains(entity.getType()));
     }
 
     private boolean shouldInteractEntity(Entity entity, InteractionHand hand) {
@@ -226,11 +213,7 @@ public class NoInteract extends Module {
             return false;
 
         // Entities
-        if (entityInteractMode.get() == ListMode.BlackList &&
-            entityInteract.get().contains(entity.getType())) {
-            return false;
-        } else return entityInteractMode.get() != ListMode.WhiteList ||
-            entityInteract.get().contains(entity.getType());
+        return entityInteractMode.get().allows(entityInteract.get().contains(entity.getType()));
     }
 
     public enum HandMode {
@@ -238,11 +221,6 @@ public class NoInteract extends Module {
         Offhand,
         Both,
         None
-    }
-
-    public enum ListMode {
-        WhiteList,
-        BlackList
     }
 
     public enum InteractMode {

@@ -5,20 +5,22 @@
 
 package meteordevelopment.meteorclient.systems.hud.elements;
 
-import meteordevelopment.meteorclient.mixin.LevelRendererAccessor;
 import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.hud.Hud;
 import meteordevelopment.meteorclient.systems.hud.HudElement;
 import meteordevelopment.meteorclient.systems.hud.HudElementInfo;
 import meteordevelopment.meteorclient.systems.hud.HudRenderer;
+import meteordevelopment.meteorclient.utils.render.DisplayItemUtils;
 import meteordevelopment.meteorclient.utils.render.color.Color;
 import meteordevelopment.meteorclient.utils.render.color.SettingColor;
 import net.minecraft.core.Direction;
+import net.minecraft.server.level.BlockDestructionProgress;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
 import java.util.List;
+import java.util.SortedSet;
 
 import static meteordevelopment.meteorclient.MeteorClient.mc;
 
@@ -112,15 +114,19 @@ public class HoleHud extends HudElement {
         Block block = dir == Direction.DOWN ? Blocks.OBSIDIAN : mc.level.getBlockState(mc.player.blockPosition().relative(dir)).getBlock();
         if (!safe.get().contains(block)) return;
 
-        renderer.item(block.asItem().getDefaultInstance(), (int) x, (int) y, getScale(), false);
+        renderer.item(DisplayItemUtils.toStack(block.asItem()), (int) x, (int) y, getScale(), false);
 
         if (dir == Direction.DOWN) return;
 
-        ((LevelRendererAccessor) mc.levelRenderer).meteor$getDestroyingBlocks().values().forEach(info -> {
+        for (SortedSet<BlockDestructionProgress> progresses : mc.level.destructionProgress().values()) {
+            if (progresses.isEmpty()) continue;
+
+            BlockDestructionProgress info = progresses.last();
             if (info.getPos().equals(mc.player.blockPosition().relative(dir))) {
                 renderBreaking(renderer, x, y, info.getProgress() / 9f);
+                break;
             }
-        });
+        }
     }
 
     private void renderBreaking(HudRenderer renderer, double x, double y, double percent) {

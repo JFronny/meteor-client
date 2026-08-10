@@ -71,9 +71,11 @@ public class HudRenderer {
 
         graphics.nextStratum();
 
+        graphics.pose().pushMatrix();
+        graphics.pose().scale(1.0f / mc.getWindow().getGuiScale());
+
         if (!hud.hasCustomFont()) {
-            VanillaTextRenderer.INSTANCE.scaleIndividually = true;
-            VanillaTextRenderer.INSTANCE.begin();
+            VanillaTextRenderer.INSTANCE.begin(graphics);
         }
     }
 
@@ -87,7 +89,7 @@ public class HudRenderer {
 
                 if (fontHolder.visited) {
                     MeshRenderer.begin()
-                        .attachments(mc.getMainRenderTarget())
+                        .attachments(mc.gameRenderer.mainRenderTarget())
                         .pipeline(MeteorRenderPipelines.UI_TEXT)
                         .mesh(fontHolder.getMesh())
                         .sampler("u_Texture", fontHolder.font.texture.getTextureView(), fontHolder.font.texture.getSampler())
@@ -106,6 +108,8 @@ public class HudRenderer {
 
         for (Runnable task : postTasks) task.run();
         postTasks.clear();
+
+        graphics.pose().popMatrix();
 
         graphics.nextStratum();
 
@@ -142,7 +146,6 @@ public class HudRenderer {
         if (scale == -1) scale = hud.getTextScale();
 
         if (!hud.hasCustomFont()) {
-            VanillaTextRenderer.INSTANCE.scale = scale * 2;
             return VanillaTextRenderer.INSTANCE.render(text, x, y, color, shadow);
         }
 
@@ -219,11 +222,11 @@ public class HudRenderer {
     }
 
     public void item(ItemStack itemStack, int x, int y, float scale, boolean overlay, String countOverlay) {
-        RenderUtils.drawItem(graphics, itemStack, x, y, scale, overlay, countOverlay, true);
+        RenderUtils.drawItem(graphics, itemStack, x, y, scale, overlay, countOverlay, false);
     }
 
     public void item(ItemStack itemStack, int x, int y, float scale, boolean overlay) {
-        RenderUtils.drawItem(graphics, itemStack, x, y, scale, overlay);
+        RenderUtils.drawItem(graphics, itemStack, x, y, scale, overlay, null, false);
     }
 
     public void entity(LivingEntity entity, int x, int y, int width, int height, float yaw, float pitch) {

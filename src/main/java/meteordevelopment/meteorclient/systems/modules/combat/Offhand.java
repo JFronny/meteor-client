@@ -11,12 +11,12 @@ import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.modules.Categories;
 import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.systems.modules.Modules;
+import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.misc.input.KeyAction;
 import meteordevelopment.meteorclient.utils.player.FindItemResult;
 import meteordevelopment.meteorclient.utils.player.InvUtils;
 import meteordevelopment.meteorclient.utils.player.PlayerUtils;
 import meteordevelopment.orbit.EventHandler;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.AxeItem;
@@ -242,7 +242,7 @@ public class Offhand extends Module {
     @EventHandler
     private void onMouseClick(MouseClickEvent event) {
         // Detects if the User is right-clicking
-        isClicking = mc.screen == null && !Modules.get().get(AutoTotem.class).isLocked() && !usableItem() && !mc.player.isUsingItem() && event.action == KeyAction.Press && event.button() == GLFW_MOUSE_BUTTON_RIGHT;
+        isClicking = mc.gui.screen() == null && !Modules.get().get(AutoTotem.class).isLocked() && !usableItem() && !mc.player.isUsingItem() && event.action == KeyAction.Press && event.button() == GLFW_MOUSE_BUTTON_RIGHT;
     }
 
     private boolean usableItem() {
@@ -250,7 +250,7 @@ public class Offhand extends Module {
         return mc.player.getMainHandItem().getItem() == Items.BOW
             || mc.player.getMainHandItem().getItem() == Items.TRIDENT
             || mc.player.getMainHandItem().getItem() == Items.CROSSBOW
-            || mc.player.getMainHandItem().getItem().components().has(DataComponents.FOOD);
+            || Utils.isFood(mc.player.getMainHandItem());
     }
 
     @Override
