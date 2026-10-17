@@ -117,9 +117,9 @@ public class Notebot extends Module {
         .build()
     );
 
-    public final Setting<Boolean> roundOutOfRange = sgGeneral.add(new BoolSetting.Builder()
-        .name("round-out-of-range")
-        .description("Rounds out of range notes")
+    public final Setting<Boolean> transposeOutOfRange = sgGeneral.add(new BoolSetting.Builder()
+        .name("transpose-out-of-range")
+        .description("Transposes out of range notes")
         .defaultValue(false)
         .build()
     );
@@ -388,7 +388,7 @@ public class Notebot extends Module {
 
             TextRenderer text = TextRenderer.get();
 
-            NametagUtils.begin(pos);
+            NametagUtils.begin(pos, event.graphics);
             text.beginBig(event.graphics);
 
             double xScreen = text.getWidth(levelText) / 2.0;
@@ -402,7 +402,7 @@ public class Notebot extends Module {
             }
             text.end();
 
-            NametagUtils.end();
+            NametagUtils.end(event.graphics);
         }
     }
 
@@ -834,7 +834,7 @@ public class Notebot extends Module {
         }
 
         if (swingArm.get()) {
-            mc.player.swing(InteractionHand.MAIN_HAND);
+            mc.player.swing(InteractionHand.MAIN_HAND, mc.player.getMainHandItem().getAttackAnimation(), false);
         }
 
         int iterations = 0;
@@ -904,7 +904,7 @@ public class Notebot extends Module {
 
             // Swing arm
             if (swingArm.get()) {
-                mc.player.swing(InteractionHand.MAIN_HAND);
+                mc.player.swing(InteractionHand.MAIN_HAND, mc.player.getMainHandItem().getAttackAnimation(), false);
             }
 
             // Play notes

@@ -53,7 +53,7 @@ public abstract class GuiRendererMixin {
     @Inject(method = "render", at = @At("HEAD"))
     private void render$preGui(CallbackInfo ci) {
         if ((GuiRenderer) (Object) this instanceof MeteorMcGuiRenderer) return;
-        if (Modules.get().isActive(HideRenderModules.class)) return;
+        if (Modules.get() == null || Modules.get().isActive(HideRenderModules.class)) return;
         var mc = Minecraft.getInstance();
 
         if (mc.gui.screen() == null || mc.gui.screen() instanceof WidgetScreen) return;

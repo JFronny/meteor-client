@@ -22,15 +22,12 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.WritableBookContent;
 import net.minecraft.world.item.component.WrittenBookContent;
-import org.lwjgl.BufferUtils;
-import org.lwjgl.PointerBuffer;
-import org.lwjgl.system.MemoryUtil;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
-import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.function.Predicate;
 
@@ -38,16 +35,6 @@ public class BookBot extends Module {
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
 
     private final File DEFAULT_FILE = new File(MeteorClient.FOLDER, "bookbot.txt");
-    private final PointerBuffer filters;
-
-    {
-        filters = BufferUtils.createPointerBuffer(1);
-
-        ByteBuffer txtFilter = MemoryUtil.memASCII("*.txt");
-
-        filters.put(txtFilter);
-        filters.rewind();
-    }
 
     private final Setting<Mode> mode = sgGeneral.add(new EnumSetting.Builder<Mode>()
         .name("mode")
@@ -60,7 +47,7 @@ public class BookBot extends Module {
         .name("file")
         .description("Which file to use.")
         .defaultValue(DEFAULT_FILE)
-        .filter(filters)
+        .filter("*.txt")
         .visible(() -> mode.get() == Mode.File)
         .build()
     );
@@ -218,7 +205,7 @@ public class BookBot extends Module {
             }
 
             // Read each line of the file and construct a string with the needed line breaks
-            try (BufferedReader reader = new BufferedReader(new FileReader(file.get()))) {
+            try (BufferedReader reader = Files.newBufferedReader(file.get().toPath(), StandardCharsets.UTF_8)) {
                 StringBuilder file = new StringBuilder();
 
                 String line;
